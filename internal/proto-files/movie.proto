@@ -1,0 +1,154 @@
+
+syntax = "proto3";
+
+package movie;
+option go_package = "internal/grpc/movie; moviepb";
+
+import "pkg/google/api/field_behavior.proto";
+import "pkg/google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+
+// Service defined to manage Movie related activities and data
+service MovieService {
+
+  // Fetches the movie with given ID
+  rpc ListMovies(ListMoviesRequest) returns (ListMoviesResponse) {
+    option (google.api.http) = {
+      get: "/v1/movies"
+    };
+  }
+
+  // Fetches the movie with given ID
+  rpc GetMovie(GetMovieRequest) returns (GetMovieResponse) {
+    option (google.api.http) = {
+      get: "/v1/movies/{id}"
+    };
+  }
+
+  // Creates the movie with provided values
+  rpc CreateMovie(CreateMovieRequest) returns (CreateMovieResponse) {
+    option (google.api.http) = {
+      post: "/v1/movies"
+      body: "movie"
+    };
+  }
+
+  // Update an already present Movie with new values
+  rpc UpdateMovie(UpdateMovieRequest) returns (UpdateMovieResponse) {
+    option (google.api.http) = {
+      put: "/v1/movies/{id}"
+    };
+  }
+  
+  // Update an already present Movie with new values
+  rpc PartialUpdateMovie(PartialUpdateMovieRequest) returns (PartialUpdateMovieResponse) {
+    option (google.api.http) = {
+      patch: "/v1/movies/{id}"
+    };
+  }
+
+  // Delete an existing Record with given ID 
+  rpc DeleteMovie(DeleteMovieRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      delete: "/v1/movies/{id}"
+    };
+  }
+}
+
+message ListMoviesRequest {
+
+}
+
+message ListMoviesResponse {
+  repeated Movie movies = 1;
+}
+
+message GetMovieRequest {
+  string id = 1;
+}
+
+message GetMovieResponse {
+  Movie movie = 1;
+}
+
+message CreateMovieRequest {
+  Movie movie = 1; 
+}
+
+message CreateMovieResponse {
+  string id = 1;
+}
+
+message UpdateMovieRequest {
+  string id = 1;
+  Movie movie = 2;
+}
+
+message UpdateMovieResponse {
+  string id = 1;
+}
+
+message PartialUpdateMovieRequest {
+  
+  // Unique ID for the Movie
+  string id = 1;
+
+  // Brief summary of the Movie
+  string summary = 3; 
+
+  // Group of actors who make up a Film or stage play
+  repeated string cast = 5;
+
+  // Tags related to the Movie
+  repeated Tag tags = 6[
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // Director of film
+  string director = 7;
+
+  // The author(s) of film 
+  repeated string writers = 8;
+}
+
+message PartialUpdateMovieResponse {
+  string id = 1;
+}
+
+message DeleteMovieRequest {
+  string id = 1;
+}
+
+enum Tag {
+  UNDEFINED_TAG = 0;
+  Action = 1;
+  Adventure = 2;
+  Fantasy = 3;
+}
+
+message Movie {
+  // Unique ID for the Movie
+  string id = 1;
+
+  // Name of the Movie
+  string name = 2[
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // Brief summary of the Movie
+  string summary = 3; 
+
+  // Group of actors who make up a Film or stage play
+  repeated string cast = 5;
+
+  // Tags related to the Movie
+  repeated Tag tags = 6[
+    (google.api.field_behavior) = REQUIRED
+  ];
+
+  // Director of film
+  string director = 7;
+
+  // The author(s) of film 
+  repeated string writers = 8;
+}
