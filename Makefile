@@ -32,6 +32,6 @@ gen:
 	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto
 	
 
-.PHONY: rest
-rest:
-	go run main.go -port 8081 -type rest -endpoint 127.0.0.1
+.PHONY: run
+run:
+	go run main.go -httpPort 8081 -grpcPort 8080

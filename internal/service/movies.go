@@ -45,8 +45,6 @@ func (ms *MovieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieReques
 	objID := req.GetId()
 	log.Println("Object ID is: ", objID)
 
-	log.Println("Store: ", ms.Store)
-
 	// Check if Object exists or not
 	// codes.NotFound
 	if obj, ok := ms.Store[objID]; ok {
