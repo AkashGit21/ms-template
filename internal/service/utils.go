@@ -3,6 +3,8 @@ package service
 import (
 	"fmt"
 	"strings"
+
+	"github.com/google/uuid"
 )
 
 // isAllowedSummary checks whether the given string is a valid Summary or not, i.e -
@@ -12,6 +14,10 @@ func isAllowedSummary(s string) error {
 		return fmt.Errorf("The summary should be between 8 and 1200 characters.")
 	}
 	return nil
+}
+
+func isValidName(s string) bool {
+	return StringLenBetween(s, 1, 120)
 }
 
 // StringLenBetween is a fxn which tests if the provided value is of type string and has
@@ -24,4 +30,11 @@ func StringLenBetween(s interface{}, min, max int) bool {
 		return length >= min && length <= max
 	}
 	return false
+}
+
+// Generate a Unique UUID string for the object
+func generateUUID() string {
+	uniqueID := uuid.New()
+
+	return uniqueID.String()
 }

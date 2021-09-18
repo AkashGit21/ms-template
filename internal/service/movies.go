@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"reflect"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/golang/protobuf/ptypes/empty"
@@ -21,6 +22,7 @@ func NewMovieServer() *MovieServer {
 		Store: make(map[string]*moviepb.Movie),
 	}
 }
+
 func (ms *MovieServer) ListMovies(context.Context, *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
 	pageSize := 4
 	var out []*moviepb.Movie
@@ -61,8 +63,7 @@ func (ms *MovieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 
 	log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
 
-	objID := req.GetMovie().GetId()
-	log.Println("Object ID is: ", objID)
+	objID := generateUUID()
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
@@ -70,9 +71,16 @@ func (ms *MovieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 		return nil, status.Errorf(codes.AlreadyExists, "Movie Record with ID: %v already exists!", objID)
 	} else {
 		mvObject := req.GetMovie()
+		if mvObject.GetId() != "" {
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated")
+		}
+		mvObject.Id = objID
 
 		// Validate format of Input and store the data
-		IsValidMovie(mvObject)
+		if valid, err := IsValidMovie(mvObject); !valid {
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
+		}
+
 		ms.Store[objID] = mvObject
 	}
 
@@ -93,6 +101,21 @@ func (ms *MovieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 	// codes.NotFound
 	if _, ok := ms.Store[objID]; ok {
 		// Validate and update the whole object
+		mvObject := req.GetMovie()
+
+		// Verify that the ID is not updated
+		newID := mvObject.GetId()
+		if newID != "" && newID != objID {
+			return nil, status.Errorf(codes.InvalidArgument, "Cannot update the ID of object!")
+		}
+
+		// Validate format of Input and store the data
+		if valid, err := IsValidMovie(mvObject); !valid {
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
+		}
+
+		mvObject.Id = objID
+		ms.Store[objID] = mvObject
 
 	} else {
 		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
@@ -100,7 +123,7 @@ func (ms *MovieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 
 	log.Println("[DEBUG] End UpdateMovieRequest!")
 	return &moviepb.UpdateMovieResponse{
-		Id: "23",
+		Id: objID,
 	}, nil
 }
 
@@ -113,16 +136,43 @@ func (ms *MovieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.Part
 
 	// Check if object already exists or not
 	// codes.NotFound
-	if _, ok := ms.Store[objID]; ok {
+	if mvObject, ok := ms.Store[objID]; ok {
 		// Validate each field individually and Update the fields at a go afterwards
 
+		// Verify that the ID is not updated
+		newID := mvObject.GetId()
+		if newID != "" && newID != objID {
+			return nil, status.Errorf(codes.InvalidArgument, "Cannot update the ID of object!")
+		}
+
+		if smry := req.GetSummary(); smry != "" && smry != mvObject.GetSummary() {
+			mvObject.Summary = smry
+		}
+
+		if dir := req.GetDirector(); dir != "" && dir != mvObject.GetDirector() {
+			mvObject.Director = dir
+		}
+
+		if cast := req.GetCast(); cast != nil && reflect.DeepEqual(cast, mvObject.GetCast()) {
+			mvObject.Cast = cast
+		}
+
+		if tags := req.GetTags(); tags != nil && reflect.DeepEqual(tags, mvObject.GetTags()) {
+			mvObject.Tags = tags
+		}
+
+		if writers := req.GetWriters(); writers != nil && reflect.DeepEqual(writers, mvObject.GetCast()) {
+			mvObject.Writers = writers
+		}
+
+		ms.Store[objID] = mvObject
 	} else {
 		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
 	}
 
 	log.Println("[DEBUG] End PartialUpdateMovieRequest!")
 	return &moviepb.PartialUpdateMovieResponse{
-		Id: "123",
+		Id: objID,
 	}, nil
 }
 
@@ -142,16 +192,36 @@ func (ms *MovieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovie
 	}
 
 	log.Println("[DEBUG] End DeleteMovieRequest!")
-	return nil, nil
+	return &empty.Empty{}, nil
 }
 
 func IsValidMovie(mv *moviepb.Movie) (bool, error) {
-	if !StringLenBetween(mv.Name, 1, 120) {
+	if !isValidName(mv.Name) {
 		return false, fmt.Errorf("The name should be between 1 and 120 characters.")
 	}
 
 	if err := isAllowedSummary(mv.Summary); err != nil {
 		return false, err
+	}
+
+	if len(mv.Cast) > 0 {
+		for _, crew := range mv.Cast {
+			if !isValidName(crew) {
+				return false, fmt.Errorf("Name of Cast members should be between 1 and 120 characters.")
+			}
+		}
+	}
+
+	if mv.Director != "" && !isValidName(mv.Director) {
+		return false, fmt.Errorf("Director field should be between 1 and 120 characters.")
+	}
+
+	if len(mv.Cast) > 0 {
+		for _, wr := range mv.Cast {
+			if !isValidName(wr) {
+				return false, fmt.Errorf("Writers' name should be between 1 and 120 characters.")
+			}
+		}
 	}
 
 	return true, nil

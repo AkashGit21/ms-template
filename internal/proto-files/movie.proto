@@ -37,6 +37,7 @@ service MovieService {
   rpc UpdateMovie(UpdateMovieRequest) returns (UpdateMovieResponse) {
     option (google.api.http) = {
       put: "/v1/movies/{id}"
+      body: "movie"
     };
   }
   
@@ -44,6 +45,7 @@ service MovieService {
   rpc PartialUpdateMovie(PartialUpdateMovieRequest) returns (PartialUpdateMovieResponse) {
     option (google.api.http) = {
       patch: "/v1/movies/{id}"
+      body: "*"
     };
   }
 
@@ -56,7 +58,6 @@ service MovieService {
 }
 
 message ListMoviesRequest {
-
 }
 
 message ListMoviesResponse {
@@ -94,7 +95,9 @@ message PartialUpdateMovieRequest {
   string id = 1;
 
   // Brief summary of the Movie
-  string summary = 3; 
+  string summary = 3[
+    (google.api.field_behavior) = REQUIRED
+  ]; 
 
   // Group of actors who make up a Film or stage play
   repeated string cast = 5;
@@ -128,7 +131,9 @@ enum Tag {
 
 message Movie {
   // Unique ID for the Movie
-  string id = 1;
+  string id = 1[
+    (google.api.field_behavior) = OUTPUT_ONLY
+  ];
 
   // Name of the Movie
   string name = 2[
