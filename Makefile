@@ -34,4 +34,4 @@ gen:
 
 .PHONY: run
 run:
-	go run main.go -httpPort 8081 -grpcPort 8080
+	go run main.go -config ./lib/configuration/config.json

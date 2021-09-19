@@ -23,8 +23,8 @@ import (
 var (
 	version = "no version"
 
-	httpPort   = flag.Int("httpPort", 8888, "http port")
-	grpcPort   = flag.Int("grpcPort", 9200, "grpc port")
+	httpPort   = flag.Int("httpPort", 8081, "http port")
+	grpcPort   = flag.Int("grpcPort", 8080, "grpc port")
 	healthPort = flag.Int("healthPort", 6666, "grpc health port")
 
 	logLevel     = flag.String("logLevel", "INFO", "Log level, INFO|WARNING|DEBUG|ERROR")
@@ -37,7 +37,7 @@ var (
 	httpServer       *http.Server
 )
 
-func StartServer() {
+func StartServer(endpoint string) {
 	// port := flag.Int("port", 8080, "Server Port to be used")
 	flag.Parse()
 
@@ -51,7 +51,7 @@ func StartServer() {
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%d", *grpcPort)
+		addr := fmt.Sprintf("%s:%d", endpoint, *grpcPort)
 		ln, err := net.Listen("tcp", addr)
 		if err != nil {
 			log.Fatalf("gRPC server: failed to listen: %v", err)
@@ -72,7 +72,7 @@ func StartServer() {
 	})
 
 	g.Go(func() error {
-		addr := fmt.Sprintf(":%d", *httpPort)
+		addr := fmt.Sprintf("%s:%d", endpoint, *httpPort)
 
 		lis, err := net.Listen("tcp", addr)
 		if err != nil {
