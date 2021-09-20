@@ -105,7 +105,7 @@ func (ms *MovieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 
 		// Verify that the ID is not updated
 		newID := mvObject.GetId()
-		if newID != "" && newID != objID {
+		if newID != "" && !reflect.DeepEqual(newID, objID) {
 			return nil, status.Errorf(codes.InvalidArgument, "Cannot update the ID of object!")
 		}
 
@@ -196,6 +196,7 @@ func (ms *MovieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovie
 }
 
 func IsValidMovie(mv *moviepb.Movie) (bool, error) {
+
 	if !isValidName(mv.Name) {
 		return false, fmt.Errorf("The name should be between 1 and 120 characters.")
 	}
