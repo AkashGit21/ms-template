@@ -131,14 +131,12 @@ enum Tag {
 
 message Movie {
   // Unique ID for the Movie
-  string id = 1[
-    (google.api.field_behavior) = OUTPUT_ONLY
-  ];
+  string id = 1
+    [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // Name of the Movie
-  string name = 2[
-    (google.api.field_behavior) = REQUIRED
-  ];
+  string name = 2
+    [(google.api.field_behavior) = REQUIRED];
 
   // Brief summary of the Movie
   string summary = 3; 
@@ -147,9 +145,8 @@ message Movie {
   repeated string cast = 5;
 
   // Tags related to the Movie
-  repeated Tag tags = 6[
-    (google.api.field_behavior) = REQUIRED
-  ];
+  repeated Tag tags = 6
+    [(google.api.field_behavior) = REQUIRED];
 
   // Director of film
   string director = 7;

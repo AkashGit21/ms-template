@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"context"
@@ -95,7 +95,7 @@ func updateConfig(config *TestConfig) {
 func testGetMovieById(ctx context.Context, objID string, config *TestConfig) error {
 
 	// Convert srv from interface to server
-	srv := config.Server.(*MovieServer)
+	srv := config.Server.(*movieServer)
 
 	resp, err := srv.GetMovie(ctx, &moviepb.GetMovieRequest{Id: objID})
 	if err != nil {
@@ -121,7 +121,7 @@ func testGetMovieById(ctx context.Context, objID string, config *TestConfig) err
 func testPostMovie(ctx context.Context, config *TestConfig) (string, error) {
 
 	// Convert srv from interface to server
-	srv := config.Server.(*MovieServer)
+	srv := config.Server.(*movieServer)
 	mvObj := config.Body.(*moviepb.Movie)
 
 	resp, err := srv.CreateMovie(ctx, &moviepb.CreateMovieRequest{Movie: mvObj})
@@ -141,7 +141,7 @@ func testPostMovie(ctx context.Context, config *TestConfig) (string, error) {
 func testPutMovieById(ctx context.Context, objectId string, config *TestConfig) (string, error) {
 
 	// Convert srv from interface to server
-	srv := config.Server.(*MovieServer)
+	srv := config.Server.(*movieServer)
 	mvObject := config.Body.(*moviepb.Movie)
 
 	resp, err := srv.UpdateMovie(ctx, &moviepb.UpdateMovieRequest{Id: objectId, Movie: mvObject})
@@ -159,7 +159,7 @@ func testPutMovieById(ctx context.Context, objectId string, config *TestConfig) 
 func testDeleteMovieById(ctx context.Context, objectId string, config *TestConfig) error {
 
 	// Convert srv from interface to server
-	srv := config.Server.(*MovieServer)
+	srv := config.Server.(*movieServer)
 
 	resp, err := srv.DeleteMovie(ctx, &moviepb.DeleteMovieRequest{Id: objectId})
 	if err != nil {

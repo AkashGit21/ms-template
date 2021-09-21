@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"fmt"
@@ -34,13 +34,6 @@ func StringLenBetween(s interface{}, min, max int) bool {
 	return false
 }
 
-// Generate a Unique UUID string for the object
-func generateUUID() string {
-	uniqueID := uuid.New()
-
-	return uniqueID.String()
-}
-
 const charset = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
@@ -57,4 +50,15 @@ func StringWithCharset(length int, charset string) string {
 
 func String(length int) string {
 	return StringWithCharset(length, charset)
+}
+
+// Generate a Unique UUID string for the object
+func generateUUID() string {
+	uniqueID := uuid.New()
+
+	return uniqueID.String()
+}
+
+func NewTokenGenerator() string {
+	return ""
 }

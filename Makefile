@@ -17,9 +17,10 @@ TEST_COUNT=1
 BENCH_REGEX=.
 BENCH_RUN=NONE
 
+
 .PHONY: build
 build:
-	$(GOBUILD) -tags "$(TAGS)" -o $(BINARY_NAME) -v .
+	$(GOBUILD) -tags "$(TAGS)" -o $(BINARY_NAME) -v ./cmd/ms-project
 
 .PHONY: clean
 clean:
@@ -28,10 +29,14 @@ clean:
 
 
 .PHONY: gen
-gen: 
-	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto
-	
+gen:
+	protoc --go_out=plugins=grpc:. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
+
+
+.PHONY: help
+help:
+	go run ./cmd/ms-project help
 
 .PHONY: run
 run:
-	go run main.go -config ./lib/configuration/config.json
+	go run ./cmd/ms-project run

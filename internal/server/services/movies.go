@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"context"
@@ -12,18 +12,17 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type MovieServer struct {
-	moviepb.UnimplementedMovieServiceServer
+type movieServer struct {
 	Store map[string]*moviepb.Movie
 }
 
-func NewMovieServer() *MovieServer {
-	return &MovieServer{
+func NewMovieServer() *movieServer {
+	return &movieServer{
 		Store: make(map[string]*moviepb.Movie),
 	}
 }
 
-func (ms *MovieServer) ListMovies(context.Context, *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
+func (ms *movieServer) ListMovies(context.Context, *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
 	pageSize := 4
 	var out []*moviepb.Movie
 
@@ -40,7 +39,7 @@ func (ms *MovieServer) ListMovies(context.Context, *moviepb.ListMoviesRequest) (
 	}, nil
 }
 
-func (ms *MovieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieRequest) (*moviepb.GetMovieResponse, error) {
+func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieRequest) (*moviepb.GetMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning GetMovieRequest: ", req)
 
@@ -59,10 +58,9 @@ func (ms *MovieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieReques
 	}
 }
 
-func (ms *MovieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
+func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
-
 	objID := generateUUID()
 
 	// Check if Object already exists -
@@ -90,7 +88,7 @@ func (ms *MovieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 	}, nil
 }
 
-func (ms *MovieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
+func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
 
@@ -127,7 +125,7 @@ func (ms *MovieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 	}, nil
 }
 
-func (ms *MovieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.PartialUpdateMovieRequest) (*moviepb.PartialUpdateMovieResponse, error) {
+func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.PartialUpdateMovieRequest) (*moviepb.PartialUpdateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning PartialUpdateMovieRequest: ", req)
 
@@ -176,7 +174,7 @@ func (ms *MovieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.Part
 	}, nil
 }
 
-func (ms *MovieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
+func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
 
 	log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
 
