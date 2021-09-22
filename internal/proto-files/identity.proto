@@ -133,7 +133,10 @@ message UpdateUserRequest {
   ];
 
   // The user to update.
-  User user = 2;
+  User user = 2 [
+    (google.api.resource_reference).type = "showcase.googleapis.com/User",
+    (google.api.field_behavior) = REQUIRED
+  ];
 
   // The field mask to determine which fields are to be updated. If empty, the
   // server will assume all fields are to be updated.

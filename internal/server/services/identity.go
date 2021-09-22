@@ -32,6 +32,8 @@ type identityServer struct {
 	mu          sync.Mutex
 	keys        map[string]int
 	userEntries []userEntry
+
+	identitypb.UnimplementedIdentityServiceServer
 }
 
 // ReadOnlyIdentityServer provides a read-only interface of an identity server.
@@ -111,7 +113,9 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 // Updates a user.
 func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUserRequest) (*identitypb.User, error) {
 	log.Println("Beginning UpdateUser request: ", req)
+
 	mask := req.GetUpdateMask()
+
 	if mask != nil && len(mask.GetPaths()) > 0 {
 		return nil, status.Error(
 			codes.Unimplemented,
@@ -122,11 +126,11 @@ func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUs
 	defer is.mu.Unlock()
 
 	userObj := req.GetUser()
-	i, ok := is.keys[userObj.GetId()]
+	i, ok := is.keys[req.GetId()]
 	if !ok || !is.userEntries[i].active {
 		return nil, status.Errorf(
 			codes.NotFound,
-			"A user with id %s not found.", userObj.GetId())
+			"A user with id %s not found.", req.GetId())
 	}
 
 	err := is.validate(userObj)

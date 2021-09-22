@@ -30,7 +30,7 @@ clean:
 
 .PHONY: gen
 gen:
-	protoc --go_out=plugins=grpc:. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
+	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
 
 
 .PHONY: help

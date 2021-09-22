@@ -20,6 +20,8 @@ type movieServer struct {
 
 	mu    sync.Mutex
 	Store map[string]*moviepb.Movie
+
+	moviepb.UnimplementedMovieServiceServer
 }
 
 func NewMovieServer() *movieServer {
