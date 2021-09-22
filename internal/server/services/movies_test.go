@@ -16,7 +16,7 @@ func TestMoviesService(t *testing.T) {
 	defer cancel()
 
 	// Create some basic configuration for testing
-	conf := generateConfig()
+	conf := generateMoviesConfig()
 	// Apply POST call testing and get ID in case of success
 	objectId, err := testPostMovie(ctx, conf)
 	if err != nil {
@@ -32,7 +32,7 @@ func TestMoviesService(t *testing.T) {
 	}
 
 	// Update the configuration for further Testing
-	updateConfig(conf)
+	updateMoviesConfig(conf)
 	// Apply PUT call testing and get ID in case of success
 	objectId, err = testPutMovieById(ctx, objectId, conf)
 	if err != nil {
@@ -61,13 +61,7 @@ func TestMoviesService(t *testing.T) {
 	}
 }
 
-type TestConfig struct {
-	Server interface{}
-	URL    string
-	Body   interface{}
-}
-
-func generateConfig() *TestConfig {
+func generateMoviesConfig() *TestConfig {
 	return &TestConfig{
 		Server: NewMovieServer(),
 		URL:    "/v1/movies",
@@ -80,7 +74,7 @@ func generateConfig() *TestConfig {
 	}
 }
 
-func updateConfig(config *TestConfig) {
+func updateMoviesConfig(config *TestConfig) {
 
 	config.Body = &moviepb.Movie{
 		Name:     "Movie_test",
@@ -108,10 +102,9 @@ func testGetMovieById(ctx context.Context, objID string, config *TestConfig) err
 	}
 
 	// Verify the fields in response matches with the config passed
-	mvObject := resp.Movie
 	configMv := config.Body.(*moviepb.Movie)
 
-	if !reflect.DeepEqual(mvObject, configMv) {
+	if !reflect.DeepEqual(resp, configMv) {
 		return fmt.Errorf("Fields do not match the required configuration!")
 	}
 

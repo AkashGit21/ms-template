@@ -5,8 +5,6 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // isAllowedSummary checks whether the given string is a valid Summary or not, i.e -
@@ -50,15 +48,4 @@ func StringWithCharset(length int, charset string) string {
 
 func String(length int) string {
 	return StringWithCharset(length, charset)
-}
-
-// Generate a Unique UUID string for the object
-func generateUUID() string {
-	uniqueID := uuid.New()
-
-	return uniqueID.String()
-}
-
-func NewTokenGenerator() string {
-	return ""
 }

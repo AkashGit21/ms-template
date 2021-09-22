@@ -2,28 +2,36 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-// NewIdentityServer returns a new instance of showcase identity server.
+// NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer() *identityServer {
 	return &identityServer{
-		token: NewTokenGenerator(),
+		token: server.NewTokenGenerator(),
 		keys:  map[string]int{},
 	}
 }
 
 type userEntry struct {
-	user    *identitypb.User
-	deleted bool
+	user   *identitypb.User
+	active bool
+}
+
+type identityServer struct {
+	token server.JWTTokenGenerator
+
+	mu          sync.Mutex
+	keys        map[string]int
+	userEntries []userEntry
 }
 
 // ReadOnlyIdentityServer provides a read-only interface of an identity server.
@@ -32,97 +40,105 @@ type ReadOnlyIdentityServer interface {
 	ListUsers(context.Context, *identitypb.ListUsersRequest) (*identitypb.ListUsersResponse, error)
 }
 
-type identityServer struct {
-	uid   string // server.UniqID
-	token string // services.TokenGenerator
-
-	mu    sync.Mutex
-	keys  map[string]int
-	users []userEntry
-}
-
 // Creates a user.
-func (s *identityServer) CreateUser(_ context.Context, in *identitypb.CreateUserRequest) (*identitypb.User, error) {
-	log.Println("Beginning CreateUser request: ", in)
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUserRequest) (*identitypb.CreateUserResponse, error) {
+	log.Println("Beginning CreateUser request: ", req)
+	is.mu.Lock()
+	defer is.mu.Unlock()
 
-	u := in.GetUser()
-	log.Println("User: ", u)
+	objID := server.GenerateUUID()
 
-	// Ignore passed in name.
-	u.Name = ""
+	// Check if Object already exists -
+	// codes.AlreadyExists
 
-	err := s.validate(u)
-	if err != nil {
-		return nil, err
+	if _, ok := is.keys[objID]; ok {
+		return nil, status.Errorf(codes.AlreadyExists, "User Record with ID: %v already exists!", objID)
+	} else {
+
+		u := req.GetUser()
+		if u.GetId() != "" {
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated")
+		}
+
+		// Validate format of Input and store the data
+		err := is.validate(u)
+		if err != nil {
+			return nil, err
+		}
+
+		// Assign server generated info.
+		now := ptypes.TimestampNow()
+
+		u.Id = objID
+		u.CreateTime = now
+		u.UpdateTime = now
+
+		// Insert.
+		index := len(is.userEntries)
+		is.userEntries = append(is.userEntries, userEntry{user: u, active: true})
+		is.keys[objID] = index
+
 	}
 
-	// Assign info.
-	id := 3 // seededRand.Intn(len(charset)) // s.uid.Next()
-	name := fmt.Sprintf("users/%d", id)
-	now := ptypes.TimestampNow()
-
-	u.Name = name
-	u.CreateTime = now
-	u.UpdateTime = now
-
-	// Insert.
-	index := len(s.users)
-	s.users = append(s.users, userEntry{user: u})
-	s.keys[name] = index
-
-	return u, nil
+	return &identitypb.CreateUserResponse{Id: objID}, nil
 }
 
 // Retrieves the User with the given uri.
-func (s *identityServer) GetUser(_ context.Context, in *identitypb.GetUserRequest) (*identitypb.User, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequest) (*identitypb.User, error) {
+	log.Println("Beginning GetUser request: ", req)
+	is.mu.Lock()
+	defer is.mu.Unlock()
 
-	name := in.GetName()
-	if i, ok := s.keys[name]; ok {
-		entry := s.users[i]
-		if !entry.deleted {
+	objID := req.GetId()
+
+	log.Println("Keys: ", is.keys)
+	log.Println("Entries: ", is.userEntries)
+	// Check if Object exists or not
+	// codes.NotFound
+	if obj, ok := is.keys[objID]; ok {
+		entry := is.userEntries[obj]
+		if entry.active {
 			return entry.user, nil
 		}
 	}
 
 	return nil, status.Errorf(
-		codes.NotFound, "A user with name %s not found.",
-		name)
+		codes.NotFound, "A user with id %s not found!",
+		objID)
 }
 
+// TODO: Verify the UpdateUser fxn is working as expected
 // Updates a user.
-func (s *identityServer) UpdateUser(_ context.Context, in *identitypb.UpdateUserRequest) (*identitypb.User, error) {
-	mask := in.GetUpdateMask()
+func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUserRequest) (*identitypb.User, error) {
+	log.Println("Beginning UpdateUser request: ", req)
+	mask := req.GetUpdateMask()
 	if mask != nil && len(mask.GetPaths()) > 0 {
 		return nil, status.Error(
 			codes.Unimplemented,
 			"Field masks are currently not supported.")
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	is.mu.Lock()
+	defer is.mu.Unlock()
 
-	u := in.GetUser()
-	i, ok := s.keys[u.GetName()]
-	if !ok || s.users[i].deleted {
+	userObj := req.GetUser()
+	i, ok := is.keys[userObj.GetId()]
+	if !ok || !is.userEntries[i].active {
 		return nil, status.Errorf(
 			codes.NotFound,
-			"A user with name %s not found.", u.GetName())
+			"A user with id %s not found.", userObj.GetId())
 	}
 
-	err := s.validate(u)
+	err := is.validate(userObj)
 	if err != nil {
 		return nil, err
 	}
-	entry := s.users[i]
+	entry := is.userEntries[i]
 	// Update store.
 	updated := &identitypb.User{
-		Name:                u.GetName(),
-		DisplayName:         u.GetDisplayName(),
-		Email:               u.GetEmail(),
+		Id:                  userObj.GetId(),
+		Username:            userObj.GetUsername(),
+		Email:               userObj.GetEmail(),
 		CreateTime:          entry.user.GetCreateTime(),
 		UpdateTime:          ptypes.TimestampNow(),
 		Age:                 entry.user.Age,
@@ -135,38 +151,39 @@ func (s *identityServer) UpdateUser(_ context.Context, in *identitypb.UpdateUser
 	//
 	// TODO: if field_mask is implemented, do a direct update if included,
 	// regardless of if the optional field is nil.
-	if u.Age != nil {
-		updated.Age = u.Age
+	if userObj.Age != nil {
+		updated.Age = userObj.Age
 	}
-	if u.EnableNotifications != nil {
-		updated.EnableNotifications = u.EnableNotifications
+	if userObj.EnableNotifications != nil {
+		updated.EnableNotifications = userObj.EnableNotifications
 	}
-	if u.HeightFeet != nil {
-		updated.HeightFeet = u.HeightFeet
+	if userObj.HeightFeet != nil {
+		updated.HeightFeet = userObj.HeightFeet
 	}
-	if u.Nickname != nil {
-		updated.Nickname = u.Nickname
+	if userObj.Nickname != nil {
+		updated.Nickname = userObj.Nickname
 	}
 
-	s.users[i] = userEntry{user: updated}
+	is.userEntries[i] = userEntry{user: updated}
 	return updated, nil
 }
 
 // Deletes a user, their profile, and all of their authored messages.
-func (s *identityServer) DeleteUser(_ context.Context, in *identitypb.DeleteUserRequest) (*empty.Empty, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUserRequest) (*empty.Empty, error) {
+	log.Println("Beginning DeleteUser request: ", req)
+	is.mu.Lock()
+	defer is.mu.Unlock()
 
-	i, ok := s.keys[in.GetName()]
+	i, ok := is.keys[req.GetId()]
 
 	if !ok {
 		return nil, status.Errorf(
 			codes.NotFound,
-			"A user with name %s not found.", in.GetName())
+			"A user with id %s not found.", req.GetId())
 	}
 
-	entry := s.users[i]
-	s.users[i] = userEntry{user: entry.user, deleted: true}
+	entry := is.userEntries[i]
+	is.userEntries[i] = userEntry{user: entry.user, active: false}
 
 	return &empty.Empty{}, nil
 }
@@ -200,12 +217,12 @@ func (s *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersRe
 	return &identitypb.ListUsersResponse{}, nil
 }
 
-func (s *identityServer) validate(u *identitypb.User) error {
+func (is *identityServer) validate(u *identitypb.User) error {
 	// Validate Required Fields.
-	if u.GetDisplayName() == "" {
+	if u.GetUsername() == "" {
 		return status.Errorf(
 			codes.InvalidArgument,
-			"The field `display_name` is required.")
+			"The field `username` is required.")
 	}
 	if u.GetEmail() == "" {
 		return status.Errorf(
@@ -213,12 +230,12 @@ func (s *identityServer) validate(u *identitypb.User) error {
 			"The field `email` is required.")
 	}
 	// Validate Unique Fields.
-	for _, x := range s.users {
-		if x.deleted {
+	for _, x := range is.userEntries {
+		if !x.active {
 			continue
 		}
 		if (u.GetEmail() == x.user.GetEmail()) &&
-			(u.GetName() != x.user.GetName()) {
+			(u.GetId() != x.user.GetId()) {
 			return status.Errorf(
 				codes.AlreadyExists,
 				"A user with email %s already exists.",

@@ -19,7 +19,7 @@ service MovieService {
   }
 
   // Fetches the movie with given ID
-  rpc GetMovie(GetMovieRequest) returns (GetMovieResponse) {
+  rpc GetMovie(GetMovieRequest) returns (Movie) {
     option (google.api.http) = {
       get: "/v1/movies/{id}"
     };
@@ -66,10 +66,6 @@ message ListMoviesResponse {
 
 message GetMovieRequest {
   string id = 1;
-}
-
-message GetMovieResponse {
-  Movie movie = 1;
 }
 
 message CreateMovieRequest {

@@ -5,20 +5,28 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"sync"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
+	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type movieServer struct {
+	token          server.JWTTokenGenerator
+	identityServer ReadOnlyIdentityServer
+
+	mu    sync.Mutex
 	Store map[string]*moviepb.Movie
 }
 
 func NewMovieServer() *movieServer {
 	return &movieServer{
-		Store: make(map[string]*moviepb.Movie),
+		token:          server.NewTokenGenerator(),
+		identityServer: &identityServer{},
+		Store:          make(map[string]*moviepb.Movie),
 	}
 }
 
@@ -39,20 +47,17 @@ func (ms *movieServer) ListMovies(context.Context, *moviepb.ListMoviesRequest) (
 	}, nil
 }
 
-func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieRequest) (*moviepb.GetMovieResponse, error) {
+func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieRequest) (*moviepb.Movie, error) {
 
 	log.Println("[DEBUG] Beginning GetMovieRequest: ", req)
 
 	objID := req.GetId()
-	log.Println("Object ID is: ", objID)
 
 	// Check if Object exists or not
 	// codes.NotFound
 	if obj, ok := ms.Store[objID]; ok {
 		// Found the required Object, hence return it
-		return &moviepb.GetMovieResponse{
-			Movie: obj,
-		}, nil
+		return obj, nil
 	} else {
 		return nil, status.Errorf(codes.NotFound, "Record with ID:%v does not exist!", objID)
 	}
@@ -61,7 +66,7 @@ func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieReques
 func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
-	objID := generateUUID()
+	objID := server.GenerateUUID()
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
@@ -79,6 +84,8 @@ func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
 		}
 
+		ms.mu.Lock()
+		defer ms.mu.Unlock()
 		ms.Store[objID] = mvObject
 	}
 
@@ -93,7 +100,6 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 	log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
 
 	objID := req.GetId()
-	log.Println("Object ID is: ", objID)
 
 	// Check if object already exists or not
 	// codes.NotFound
@@ -130,7 +136,6 @@ func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.Part
 	log.Println("[DEBUG] Beginning PartialUpdateMovieRequest: ", req)
 
 	objID := req.GetId()
-	log.Println("Object ID is: ", objID)
 
 	// Check if object already exists or not
 	// codes.NotFound
@@ -179,7 +184,6 @@ func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovie
 	log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
 
 	objID := req.GetId()
-	log.Println("Object ID is: ", objID)
 
 	// Check if object already exists or not
 	// codes.NotFound

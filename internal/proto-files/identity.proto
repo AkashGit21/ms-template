@@ -14,12 +14,9 @@ import "pkg/google/api/resource.proto";
 
 // A simple identity service.
 service IdentityService {
-  // This service is meant to only run locally on the port 7469 (keypad digits
-  // for "show").
-  // option (google.api.default_host) = "localhost:7469";
 
   // Creates a user.
-  rpc CreateUser(CreateUserRequest) returns (User) {
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
     option (google.api.http) = {
       post: "/v1/users"
       body: "user"
@@ -32,15 +29,14 @@ service IdentityService {
   // Retrieves the User with the given uri.
   rpc GetUser(GetUserRequest) returns (User) {
     option (google.api.http) = {
-      get: "/v1/{name=users/*}"
+      get: "/v1/users/{id}"
     };
-    // option (google.api.method_signature) = "name";
   }
 
   // Updates a user.
   rpc UpdateUser(UpdateUserRequest) returns (User) {
     option (google.api.http) = {
-      patch: "/v1/{user.name=users/*}"
+      patch: "/v1/users/{id}"
       body: "*"
     };
   }
@@ -48,9 +44,8 @@ service IdentityService {
   // Deletes a user, their profile, and all of their authored messages.
   rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
-      delete: "/v1/{name=users/*}"
+      delete: "/v1/users/{id}"
     };
-    // option (google.api.method_signature) = "name";
   }
 
   // Lists all users.
@@ -68,75 +63,90 @@ message User {
     pattern: "users/{user}"
   };
 
-  // The resource name of the user.
-  string name = 1;
+  // The resource ID of the user.
+  string id = 1;
 
-  // The display_name of the user.
-  string display_name = 2 [(google.api.field_behavior) = REQUIRED];
+  // The username of the user.
+  string username = 2 [(google.api.field_behavior) = REQUIRED];
 
   // The email address of the user.
   string email = 3 [(google.api.field_behavior) = REQUIRED];
 
+  // The encode password of the user 
+  string password = 4 [(google.api.field_behavior) = REQUIRED];
+
+  // The first name of user
+  string first_name = 5;
+
+  // The last name of user
+  optional string last_name = 6;
+
   // The timestamp at which the user was created.
-  google.protobuf.Timestamp create_time = 4
+  google.protobuf.Timestamp create_time = 7
       [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The latest timestamp at which the user was updated.
-  google.protobuf.Timestamp update_time = 5
+  google.protobuf.Timestamp update_time = 8
       [(google.api.field_behavior) = OUTPUT_ONLY];
 
   // The age of the user in years.
-  optional int32 age = 6;
+  optional int32 age = 9;
 
   // The height of the user in feet.
-  optional double height_feet = 7;
+  optional double height_feet = 10;
 
   // The nickname of the user.
   //
   // (-- aip.dev/not-precedent: An empty string is a valid nickname.
   //     Ordinarily, proto3_optional should not be used on a `string` field. --)
-  optional string nickname = 8;
+  optional string nickname = 11;
 
   // Enables the receiving of notifications. The default is true if unset.
   //
   // (-- aip.dev/not-precedent: The default for the feature is true.
   //     Ordinarily, the default for a `bool` field should be false. --)
-  optional bool enable_notifications = 9;
+  optional bool enable_notifications = 12;
 }
 
-// The request message for the google.showcase.v1.Identity\CreateUser
-// method.
 message CreateUserRequest {
   // The user to create.
   User user = 1;
 }
 
-// The request message for the google.showcase.v1.Identity\GetUser
-// method.
+message CreateUserResponse {
+  string id = 1;
+}
+
 message GetUserRequest {
   // The resource name of the requested user.
-  string name = 1 [
+  string id = 1 [
     (google.api.resource_reference).type = "showcase.googleapis.com/User",
     (google.api.field_behavior) = REQUIRED
   ];
 }
 
-// The request message for the google.showcase.v1.Identity\UpdateUser
-// method.
 message UpdateUserRequest {
+// The id of user to be updated
+  string id = 1 [
+    (google.api.resource_reference).type = "showcase.googleapis.com/User",
+    (google.api.field_behavior) = REQUIRED
+  ];
+
   // The user to update.
-  User user = 1;
+  User user = 2;
 
   // The field mask to determine which fields are to be updated. If empty, the
   // server will assume all fields are to be updated.
-  google.protobuf.FieldMask update_mask = 2;
+  google.protobuf.FieldMask update_mask = 3;
 }
 
-// The request message for the google.showcase.v1.Identity\DeleteUser
-// method.
+message UpdateUserResponse {
+  string id = 1;
+}
+
 message DeleteUserRequest {
   // The resource name of the user to delete.
-  string name = 1 [
+  string id = 1 [
     (google.api.resource_reference).type = "showcase.googleapis.com/User",
     (google.api.field_behavior) = REQUIRED
   ];
