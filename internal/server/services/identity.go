@@ -16,7 +16,7 @@ import (
 // NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer() *identityServer {
 	return &identityServer{
-		token: server.NewTokenGenerator(),
+		token: server.NewJWTTokenGenerator(),
 		keys:  map[string]int{},
 	}
 }
@@ -109,67 +109,10 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 		objID)
 }
 
-// TODO: Verify the UpdateUser fxn is working as expected
 // Updates a user.
 func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUserRequest) (*identitypb.User, error) {
-	log.Println("Beginning UpdateUser request: ", req)
-
-	mask := req.GetUpdateMask()
-
-	if mask != nil && len(mask.GetPaths()) > 0 {
-		return nil, status.Error(
-			codes.Unimplemented,
-			"Field masks are currently not supported.")
-	}
-
-	is.mu.Lock()
-	defer is.mu.Unlock()
-
-	userObj := req.GetUser()
-	i, ok := is.keys[req.GetId()]
-	if !ok || !is.userEntries[i].active {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"A user with id %s not found.", req.GetId())
-	}
-
-	err := is.validate(userObj)
-	if err != nil {
-		return nil, err
-	}
-	entry := is.userEntries[i]
-	// Update store.
-	updated := &identitypb.User{
-		Id:                  userObj.GetId(),
-		Username:            userObj.GetUsername(),
-		Email:               userObj.GetEmail(),
-		CreateTime:          entry.user.GetCreateTime(),
-		UpdateTime:          ptypes.TimestampNow(),
-		Age:                 entry.user.Age,
-		EnableNotifications: entry.user.EnableNotifications,
-		HeightFeet:          entry.user.HeightFeet,
-		Nickname:            entry.user.Nickname,
-	}
-
-	// Use direct field access to avoid unwrapping and rewrapping the pointer value.
-	//
-	// TODO: if field_mask is implemented, do a direct update if included,
-	// regardless of if the optional field is nil.
-	if userObj.Age != nil {
-		updated.Age = userObj.Age
-	}
-	if userObj.EnableNotifications != nil {
-		updated.EnableNotifications = userObj.EnableNotifications
-	}
-	if userObj.HeightFeet != nil {
-		updated.HeightFeet = userObj.HeightFeet
-	}
-	if userObj.Nickname != nil {
-		updated.Nickname = userObj.Nickname
-	}
-
-	is.userEntries[i] = userEntry{user: updated}
-	return updated, nil
+	// TODO: Add the working for UpdateUser
+	return &identitypb.User{}, nil
 }
 
 // Deletes a user, their profile, and all of their authored messages.

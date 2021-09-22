@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"testing"
 
@@ -23,7 +22,6 @@ func TestIdentityService(t *testing.T) {
 		t.Errorf(err.Error())
 		return
 	}
-	log.Println("POST Call Response is: ", objectId)
 	// Verify that the fields of Response and provided Configuration matches
 	err = testGetUserById(ctx, objectId, conf)
 	if err != nil {
@@ -34,17 +32,17 @@ func TestIdentityService(t *testing.T) {
 	// Update the configuration for further Testing
 	updateIdentityConfig(conf)
 	// Apply PUT call testing and get ID in case of success
-	objectId, err = testPutUserById(ctx, objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	// Verify that the fields of Response and provided Configuration matches
-	err = testGetUserById(ctx, objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
+	// objectId, err = testPutUserById(ctx, objectId, conf)
+	// if err != nil {
+	// 	t.Errorf(err.Error())
+	// 	return
+	// }
+	// // Verify that the fields of Response and provided Configuration matches
+	// err = testGetUserById(ctx, objectId, conf)
+	// if err != nil {
+	// 	t.Errorf(err.Error())
+	// 	return
+	// }
 
 	// // TODO: Unit Testing for PATCH call
 
@@ -126,23 +124,23 @@ func testPostUser(ctx context.Context, config *TestConfig) (string, error) {
 	return id, nil
 }
 
-func testPutUserById(ctx context.Context, objectId string, config *TestConfig) (string, error) {
+// func testPutUserById(ctx context.Context, objectId string, config *TestConfig) (string, error) {
 
-	// Convert srv from interface to server
-	srv := config.Server.(*identityServer)
-	userObject := config.Body.(*identitypb.User)
+// 	// Convert srv from interface to server
+// 	srv := config.Server.(*identityServer)
+// 	userObject := config.Body.(*identitypb.User)
 
-	resp, err := srv.UpdateUser(ctx, &identitypb.UpdateUserRequest{Id: objectId, User: userObject})
-	if err != nil {
-		return "", err
-	}
+// 	resp, err := srv.UpdateUser(ctx, &identitypb.UpdateUserRequest{Id: objectId, User: userObject})
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	// Verify Response is not empty
-	if resp.String() == "" {
-		return "", fmt.Errorf("Empty Response of PUT call!")
-	}
-	return resp.GetId(), nil
-}
+// 	// Verify Response is not empty
+// 	if resp.String() == "" {
+// 		return "", fmt.Errorf("Empty Response of PUT call!")
+// 	}
+// 	return resp.GetId(), nil
+// }
 
 func testDeleteUserById(ctx context.Context, objectId string, config *TestConfig) error {
 

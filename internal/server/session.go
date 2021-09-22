@@ -13,7 +13,7 @@ type JWTTokenGenerator interface {
 	getUserFromToken()
 }
 
-func NewTokenGenerator() JWTTokenGenerator {
+func NewJWTTokenGenerator() JWTTokenGenerator {
 	return &jwtTokenGenerator{
 		token: strconv.FormatInt(time.Now().UnixNano(), 16),
 	}

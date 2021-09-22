@@ -26,7 +26,7 @@ type movieServer struct {
 
 func NewMovieServer() *movieServer {
 	return &movieServer{
-		token:          server.NewTokenGenerator(),
+		token:          server.NewJWTTokenGenerator(),
 		identityServer: &identityServer{},
 		Store:          make(map[string]*moviepb.Movie),
 	}
