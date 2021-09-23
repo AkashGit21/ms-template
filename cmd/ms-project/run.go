@@ -38,7 +38,7 @@ func init() {
 		&config.port,
 		"port",
 		"p",
-		":7469",
+		":8081",
 		"The port that application will be served on.")
 	runCmd.Flags().IntVarP(
 		&config.httpPort,
@@ -50,7 +50,7 @@ func init() {
 		&config.fallbackPort,
 		"fallback-port",
 		"f",
-		":1337",
+		":8082",
 		"The port that the fallback-proxy will be served on.")
 }
 
