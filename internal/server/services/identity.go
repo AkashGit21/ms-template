@@ -16,7 +16,7 @@ import (
 // NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer() *identityServer {
 	return &identityServer{
-		token: server.NewJWTTokenGenerator(),
+		token: server.NewTokenGenerator(),
 		keys:  map[string]int{},
 	}
 }
@@ -27,7 +27,7 @@ type userEntry struct {
 }
 
 type identityServer struct {
-	token server.JWTTokenGenerator
+	token server.TokenGenerator
 
 	mu          sync.Mutex
 	keys        map[string]int
@@ -48,22 +48,23 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	objID := server.GenerateUUID()
+	user := req.GetUser()
+	var uname string
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
 
-	if _, ok := is.keys[objID]; ok {
-		return nil, status.Errorf(codes.AlreadyExists, "User Record with ID: %v already exists!", objID)
+	if _, ok := is.keys[user.GetUsername()]; ok {
+		return nil, status.Errorf(codes.AlreadyExists, "User Record with username: %v already exists!", user.GetUsername())
 	} else {
 
-		u := req.GetUser()
-		if u.GetId() != "" {
-			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated")
+		uname = user.GetUsername()
+		if uname == "" {
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! Username is required.")
 		}
 
 		// Validate format of Input and store the data
-		err := is.validate(u)
+		err := is.validate(user)
 		if err != nil {
 			return nil, err
 		}
@@ -71,18 +72,18 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 		// Assign server generated info.
 		now := ptypes.TimestampNow()
 
-		u.Id = objID
-		u.CreateTime = now
-		u.UpdateTime = now
+		user.Password = server.HashPassword(user.GetPassword())
+		user.CreateTime = now
+		user.UpdateTime = now
 
 		// Insert.
 		index := len(is.userEntries)
-		is.userEntries = append(is.userEntries, userEntry{user: u, active: true})
-		is.keys[objID] = index
+		is.userEntries = append(is.userEntries, userEntry{user: user, active: true})
+		is.keys[user.GetUsername()] = index
 
 	}
 
-	return &identitypb.CreateUserResponse{Id: objID}, nil
+	return &identitypb.CreateUserResponse{Username: uname}, nil
 }
 
 // Retrieves the User with the given uri.
@@ -91,13 +92,11 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	objID := req.GetId()
+	uname := req.GetUsername()
 
-	log.Println("Keys: ", is.keys)
-	log.Println("Entries: ", is.userEntries)
 	// Check if Object exists or not
 	// codes.NotFound
-	if obj, ok := is.keys[objID]; ok {
+	if obj, ok := is.keys[uname]; ok {
 		entry := is.userEntries[obj]
 		if entry.active {
 			return entry.user, nil
@@ -105,8 +104,8 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	}
 
 	return nil, status.Errorf(
-		codes.NotFound, "A user with id %s not found!",
-		objID)
+		codes.NotFound, "A user with username %s not found!",
+		uname)
 }
 
 // Updates a user.
@@ -121,47 +120,49 @@ func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUs
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	i, ok := is.keys[req.GetId()]
+	index, ok := is.keys[req.GetUsername()]
 
 	if !ok {
 		return nil, status.Errorf(
 			codes.NotFound,
-			"A user with id %s not found.", req.GetId())
+			"A user with id %s not found.", req.GetUsername())
 	}
 
-	entry := is.userEntries[i]
-	is.userEntries[i] = userEntry{user: entry.user, active: false}
+	entry := is.userEntries[index]
+	is.userEntries[index] = userEntry{user: entry.user, active: false}
 
 	return &empty.Empty{}, nil
 }
 
 // Lists all users.
-func (s *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersRequest) (*identitypb.ListUsersResponse, error) {
-	// start, err := s.token.GetIndex(in.GetPageToken())
-	// if err != nil {
-	// 	return nil, err
-	// }
+func (is *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersRequest) (*identitypb.ListUsersResponse, error) {
+	start, err := is.token.GetIndex(in.GetPageToken())
+	if err != nil {
+		return nil, err
+	}
 
-	// offset := 0
-	// users := []*identitypb.User{}
-	// for _, entry := range s.users[start:] {
-	// 	offset++
-	// 	if entry.deleted {
-	// 		continue
-	// 	}
-	// 	users = append(users, entry.user)
-	// 	if len(users) >= int(in.GetPageSize()) {
-	// 		break
-	// 	}
-	// }
+	offset := 0
+	users := []*identitypb.User{}
+	for _, entry := range is.userEntries[start:] {
+		offset++
+		if !entry.active {
+			continue
+		}
+		users = append(users, entry.user)
+		if len(users) >= int(in.GetPageSize()) {
+			break
+		}
+	}
 
-	// nextToken := ""
-	// if start+offset < len(s.users) {
-	// 	nextToken = s.token.ForIndex(start + offset)
-	// }
+	nextToken := ""
+	if start+offset < len(is.userEntries) {
+		nextToken = is.token.ForIndex(start + offset)
+	}
 
-	// return &identitypb.ListUsersResponse{Users: users, NextPageToken: nextToken}, nil
-	return &identitypb.ListUsersResponse{}, nil
+	return &identitypb.ListUsersResponse{
+		Users:         users,
+		NextPageToken: nextToken,
+	}, nil
 }
 
 func (is *identityServer) validate(u *identitypb.User) error {
@@ -182,7 +183,7 @@ func (is *identityServer) validate(u *identitypb.User) error {
 			continue
 		}
 		if (u.GetEmail() == x.user.GetEmail()) &&
-			(u.GetId() != x.user.GetId()) {
+			(u.GetUsername() != x.user.GetUsername()) {
 			return status.Errorf(
 				codes.AlreadyExists,
 				"A user with email %s already exists.",

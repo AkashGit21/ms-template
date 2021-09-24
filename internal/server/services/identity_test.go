@@ -84,7 +84,7 @@ func testGetUserById(ctx context.Context, objID string, config *TestConfig) erro
 	// Convert srv from interface to server
 	srv := config.Server.(*identityServer)
 
-	resp, err := srv.GetUser(ctx, &identitypb.GetUserRequest{Id: objID})
+	resp, err := srv.GetUser(ctx, &identitypb.GetUserRequest{Username: objID})
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func testPostUser(ctx context.Context, config *TestConfig) (string, error) {
 		return "", fmt.Errorf("Empty Response of POST call!")
 	}
 
-	id := resp.GetId()
+	id := resp.GetUsername()
 	return id, nil
 }
 
@@ -147,7 +147,7 @@ func testDeleteUserById(ctx context.Context, objectId string, config *TestConfig
 	// Convert srv from interface to server
 	srv := config.Server.(*identityServer)
 
-	resp, err := srv.DeleteUser(ctx, &identitypb.DeleteUserRequest{Id: objectId})
+	resp, err := srv.DeleteUser(ctx, &identitypb.DeleteUserRequest{Username: objectId})
 	if err != nil {
 		return err
 	}

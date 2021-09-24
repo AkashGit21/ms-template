@@ -5,6 +5,7 @@ import (
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
+	"github.com/AkashGit21/ms-project/internal/server"
 )
 
 // Backend contains the various service backends that will be
@@ -17,5 +18,6 @@ type Backend struct {
 	// Supporting protos
 
 	// Other supporting data structures
-	StdLog, ErrLog *log.Logger
+	StdLog, ErrLog   *log.Logger
+	ObserverRegistry server.GrpcObserverRegistry
 }

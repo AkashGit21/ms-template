@@ -28,6 +28,11 @@ clean:
 	rm -f $(BINARY_NAME)
 
 
+.PHONY: docker-run
+docker-run:
+	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-templatedocker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-template
+
+
 .PHONY: gen
 gen:
 	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional

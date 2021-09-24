@@ -12,6 +12,7 @@ import (
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
+	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/AkashGit21/ms-project/internal/server/services"
 	fallback "github.com/googleapis/grpc-fallback-go/server"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -171,22 +172,30 @@ type endpointGRPC struct {
 
 // createBackends creates services used by both the gRPC and REST servers.
 func createBackends() *services.Backend {
+	logger := &loggerObserver{}
+	observerRegistry := server.ShowcaseObserverRegistry()
+	observerRegistry.RegisterUnaryObserver(logger)
+	// observerRegistry.RegisterStreamRequestObserver(logger)
+	// observerRegistry.RegisterStreamResponseObserver(logger)
 
 	return &services.Backend{
-		IdentityServer: services.NewIdentityServer(),
-		MovieServer:    services.NewMovieServer(),
-		StdLog:         stdLog,
-		ErrLog:         errLog,
+		ObserverRegistry: observerRegistry,
+		IdentityServer:   services.NewIdentityServer(),
+		MovieServer:      services.NewMovieServer(),
+		StdLog:           stdLog,
+		ErrLog:           errLog,
 	}
 }
 
 func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.Backend) Endpoint {
 
-	s := grpc.NewServer(
-		// MaxConnectionAge is just to avoid long connection, to facilitate load balancing
-		// MaxConnectionAgeGrace will torn them, default to infinity
+	opts := []grpc.ServerOption{
+		grpc.StreamInterceptor(backend.ObserverRegistry.StreamInterceptor),
+		grpc.UnaryInterceptor(backend.ObserverRegistry.UnaryInterceptor),
 		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: 2 * time.Minute}),
-	)
+	}
+
+	s := grpc.NewServer(opts...)
 
 	// Register Services to the server.
 	identitypb.RegisterIdentityServiceServer(s, backend.IdentityServer)

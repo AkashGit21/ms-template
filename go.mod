@@ -3,6 +3,7 @@ module github.com/AkashGit21/ms-project
 go 1.17
 
 require (
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.1.2
 	github.com/googleapis/grpc-fallback-go v0.1.4
