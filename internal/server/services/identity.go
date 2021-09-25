@@ -72,7 +72,11 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 		// Assign server generated info.
 		now := ptypes.TimestampNow()
 
-		user.Password = server.HashPassword(user.GetPassword())
+		pwd, err := server.HashPassword(user.GetPassword())
+		if err != nil {
+			return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		}
+		user.Password = pwd
 		user.CreateTime = now
 		user.UpdateTime = now
 
@@ -141,7 +145,13 @@ func (is *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersR
 		return nil, err
 	}
 
+	// Default page size is 12
+	var pageSz int32
+	if pageSz = in.GetPageSize(); pageSz == 0 || pageSz > 12 {
+		pageSz = 12
+	}
 	offset := 0
+
 	users := []*identitypb.User{}
 	for _, entry := range is.userEntries[start:] {
 		offset++
@@ -149,7 +159,7 @@ func (is *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersR
 			continue
 		}
 		users = append(users, entry.user)
-		if len(users) >= int(in.GetPageSize()) {
+		if len(users) >= int(pageSz) {
 			break
 		}
 	}

@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"log"
 	"time"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	"github.com/golang-jwt/jwt"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type JWTManager struct {
@@ -42,7 +44,7 @@ func (jm *JWTManager) GenerateToken(user *identitypb.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jm.secretKey)
+	return token.SignedString([]byte(jm.secretKey))
 }
 
 func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) {
@@ -98,8 +100,21 @@ func (jm *JWTManager) Verify(accessToken string) (*UserClaims, error) {
 	return claims, nil
 }
 
-// TODO
 // To hash the password for security reasons
-func HashPassword(s string) string {
-	return ""
+func HashPassword(s string) (string, error) {
+
+	hashedPwd, err := bcrypt.GenerateFromPassword([]byte(s), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("unable to hash password! %v", err)
+	}
+	return string(hashedPwd), nil
+}
+
+func DoesPasswordMatch(given string, need string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(need), []byte(given))
+	if err != nil {
+		log.Println("Password doesn't match! ", err)
+		return false
+	}
+	return true
 }

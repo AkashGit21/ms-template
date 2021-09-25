@@ -63,7 +63,7 @@ func TestMoviesService(t *testing.T) {
 
 func generateMoviesConfig() *TestConfig {
 	return &TestConfig{
-		Server: NewMovieServer(),
+		Server: NewMovieServer(&TestAuthSrv),
 		URL:    "/v1/movies",
 		Body: &moviepb.Movie{
 			Name:    "Movie_test",

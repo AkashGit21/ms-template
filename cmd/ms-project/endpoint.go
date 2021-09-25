@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/internal/server"
@@ -170,28 +171,48 @@ type endpointGRPC struct {
 	mux            sync.Mutex
 }
 
+func accessRoles() map[string][]string {
+	const movieServicePath = "/movie.MovieService/"
+
+	return map[string][]string{
+		movieServicePath + "ListMovies":  {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		movieServicePath + "GetMovie":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		movieServicePath + "CreateMovie": {"ADMIN", "SUBSCRIBED"},
+		movieServicePath + "UpdateMovie": {"ADMIN", "SUBSCRIBED"},
+		movieServicePath + "DeleteMovie": {"ADMIN", "SUBSCRIBED"},
+	}
+}
+
 // createBackends creates services used by both the gRPC and REST servers.
 func createBackends() *services.Backend {
-	logger := &loggerObserver{}
-	observerRegistry := server.ShowcaseObserverRegistry()
-	observerRegistry.RegisterUnaryObserver(logger)
-	// observerRegistry.RegisterStreamRequestObserver(logger)
-	// observerRegistry.RegisterStreamResponseObserver(logger)
+
+	identitySrv := services.NewIdentityServer()
+	authSrv := services.NewAuthServer(identitySrv)
+	movieSrv := services.NewMovieServer(authSrv)
+
+	jm := server.NewJWTManager(services.SecretKey, 5*time.Minute)
+	authSrv.JWT = jm
+	authI := server.NewAuthInterceptor(jm, accessRoles())
 
 	return &services.Backend{
-		ObserverRegistry: observerRegistry,
-		IdentityServer:   services.NewIdentityServer(),
-		MovieServer:      services.NewMovieServer(),
-		StdLog:           stdLog,
-		ErrLog:           errLog,
+		IdentityServer: identitySrv,
+		AuthServer:     authSrv,
+		MovieServer:    movieSrv,
+		Interceptor:    authI,
+
+		StdLog: stdLog,
+		ErrLog: errLog,
 	}
 }
 
 func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.Backend) Endpoint {
 
+	// authI := server.NewAuthInterceptor()
+
 	opts := []grpc.ServerOption{
-		grpc.StreamInterceptor(backend.ObserverRegistry.StreamInterceptor),
-		grpc.UnaryInterceptor(backend.ObserverRegistry.UnaryInterceptor),
+		// grpc.StreamInterceptor(backend.ObserverRegistry.StreamInterceptor),
+		// grpc.UnaryInterceptor(backend.ObserverRegistry.UnaryInterceptor),
+		grpc.UnaryInterceptor(backend.Interceptor.Unary()),
 		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: 2 * time.Minute}),
 	}
 
@@ -200,6 +221,7 @@ func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.B
 	// Register Services to the server.
 	identitypb.RegisterIdentityServiceServer(s, backend.IdentityServer)
 	moviepb.RegisterMovieServiceServer(s, backend.MovieServer)
+	authpb.RegisterAuthServiceServer(s, backend.AuthServer)
 
 	fb := fallback.NewServer(config.fallbackPort, "localhost"+config.port)
 
@@ -271,6 +293,12 @@ func newEndpointREST(lis net.Listener, config RuntimeConfig, backend *services.B
 	}
 
 	err = moviepb.RegisterMovieServiceHandlerServer(ctx, mux, backend.MovieServer)
+	if err != nil {
+		log.Printf("failed to Register Movie server: %v", err)
+		return nil
+	}
+
+	err = authpb.RegisterAuthServiceHandlerServer(ctx, mux, backend.AuthServer)
 	if err != nil {
 		log.Printf("failed to Register Movie server: %v", err)
 		return nil

@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"sync"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
 type movieServer struct {
-	token          server.TokenGenerator
-	identityServer ReadOnlyIdentityServer
+	token   server.TokenGenerator
+	authSrv *authServer
 
 	mu    sync.Mutex
 	keys  map[string]int
@@ -30,21 +32,68 @@ type movieEntry struct {
 	active bool
 }
 
-func NewMovieServer() *movieServer {
+func NewMovieServer(as *authServer) *movieServer {
 	return &movieServer{
-		token:          server.NewTokenGenerator(),
-		identityServer: &identityServer{},
-		keys:           map[string]int{},
+		token:   server.NewTokenGenerator(),
+		authSrv: as,
+		keys:    map[string]int{},
 	}
 }
 
-func (ms *movieServer) ListMovies(_ context.Context, req *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
+func isAuthorized(service string, role string) bool {
+	if strings.HasPrefix(service, "Get") || strings.HasPrefix(service, "List") {
+		return true
+	} else if (strings.HasPrefix(service, "Create") || strings.HasPrefix(service, "Update") || strings.HasPrefix(service, "Delete")) && (role == "ADMIN" || role == "SUBSCRIBED") {
+		return true
+	}
+	return false
+}
+
+func (ms *movieServer) verifyAuthorization(ctx context.Context, serviceName string) error {
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return status.Errorf(codes.Unauthenticated, "metadata is not provided")
+	}
+
+	var role string
+	values := md["authorization"]
+	if len(values) == 0 {
+		role = "GUEST"
+	} else {
+
+		accessToken := strings.TrimPrefix(values[0], "Basic ")
+
+		claims, err := ms.authSrv.JWT.GetUserFromToken(accessToken)
+		if err != nil {
+			return err
+		}
+		role = claims.Role
+	}
+
+	if !isAuthorized(serviceName, role) {
+		return fmt.Errorf("not authorized to perform this action!")
+	}
+	return nil
+}
+
+func (ms *movieServer) ListMovies(ctx context.Context, req *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
+
+	err := ms.verifyAuthorization(ctx, "ListMovies")
+	if err != nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
+	}
 
 	start, err := ms.token.GetIndex(req.GetPageToken())
 	if err != nil {
 		return nil, err
 	}
 
+	// Default page size is 12
+	var pageSz int32
+	if pageSz = req.GetPageSize(); pageSz == 0 || pageSz > 12 {
+		pageSz = 12
+	}
 	offset := 0
 
 	out := []*moviepb.Movie{}
@@ -55,7 +104,7 @@ func (ms *movieServer) ListMovies(_ context.Context, req *moviepb.ListMoviesRequ
 			continue
 		}
 		out = append(out, entry.movie)
-		if len(out) >= int(req.GetPageSize()) {
+		if len(out) >= int(pageSz) {
 			break
 		}
 	}
@@ -75,6 +124,11 @@ func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieReques
 
 	log.Println("[DEBUG] Beginning GetMovieRequest: ", req)
 
+	err := ms.verifyAuthorization(ctx, "GetMovie")
+	if err != nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
+	}
+
 	objID := req.GetId()
 
 	// Check if Object exists or not
@@ -91,6 +145,12 @@ func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieReques
 func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
+
+	err := ms.verifyAuthorization(ctx, "CreateMovie")
+	if err != nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
+	}
+
 	objID := server.GenerateUUID()
 
 	// Check if Object already exists -
@@ -125,6 +185,11 @@ func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
 
 	log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
+
+	err := ms.verifyAuthorization(ctx, "UpdateMovie")
+	if err != nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
+	}
 
 	objID := req.GetId()
 
@@ -212,6 +277,11 @@ func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.Part
 func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
 
 	log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
+
+	err := ms.verifyAuthorization(ctx, "DeleteMovie")
+	if err != nil {
+		return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
+	}
 
 	objID := req.GetId()
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"google.golang.org/grpc"
@@ -55,6 +56,7 @@ type GrpcObserverRegistry interface {
 		grpc.ServerStream,
 		*grpc.StreamServerInfo,
 		grpc.StreamHandler) error
+	Authorize(context.Context, string)
 	RegisterUnaryObserver(UnaryObserver)
 	DeleteUnaryObserver(name string)
 	RegisterStreamRequestObserver(StreamRequestObserver)
@@ -82,14 +84,19 @@ type showcaseObserverRegistry struct {
 	sRespObservers map[string]StreamResponseObserver
 }
 
-func (r *showcaseObserverRegistry) UnaryInterceptor(
-	ctx context.Context,
-	req interface{},
-	info *grpc.UnaryServerInfo,
-	handler grpc.UnaryHandler) (interface{}, error) {
+func (r *showcaseObserverRegistry) Authorize(ctx context.Context, s string) {
+
+	log.Println("Inside Authorize fxn!")
+	log.Println("Context: ", ctx)
+	log.Println("Info: ", s)
+}
+
+func (r *showcaseObserverRegistry) UnaryInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.Authorize(ctx, info.FullMethod)
+	log.Println("FullMethod: ", info.FullMethod)
 	resp, err := handler(ctx, req)
 
 	for _, obs := range r.uObservers {
