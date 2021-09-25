@@ -165,7 +165,7 @@ func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 		mvObject.Id = objID
 
 		// Validate format of Input and store the data
-		if valid, err := IsValidMovie(mvObject); !valid {
+		if valid, err := ms.isValidMovie(mvObject); !valid {
 			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
 		}
 
@@ -206,7 +206,7 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 		}
 
 		// Validate format of Input and store the data
-		if valid, err := IsValidMovie(mvObject); !valid {
+		if valid, err := ms.isValidMovie(mvObject); !valid {
 			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
 		}
 
@@ -301,7 +301,7 @@ func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovie
 	return &empty.Empty{}, nil
 }
 
-func IsValidMovie(mv *moviepb.Movie) (bool, error) {
+func (ms *movieServer) isValidMovie(mv *moviepb.Movie) (bool, error) {
 
 	if !isValidName(mv.Name) {
 		return false, fmt.Errorf("The name should be between 1 and 120 characters.")
@@ -328,6 +328,17 @@ func IsValidMovie(mv *moviepb.Movie) (bool, error) {
 			if !isValidName(wr) {
 				return false, fmt.Errorf("Writers' name should be between 1 and 120 characters.")
 			}
+		}
+	}
+
+	// Verify no duplicate entries are made for Movie name
+	for _, mvObject := range ms.Store {
+		if !mvObject.active {
+			continue
+		}
+
+		if mvObject.movie.GetName() == mv.GetName() {
+			return false, fmt.Errorf("Name should be unique!")
 		}
 	}
 

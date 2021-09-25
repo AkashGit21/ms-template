@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -20,6 +23,7 @@ import (
 	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 )
@@ -30,9 +34,9 @@ type RuntimeConfig struct {
 	httpPort     int
 	port         string
 	fallbackPort string
-	// tlsCaCert    string
-	// tlsCert      string
-	// tlsKey       string
+	tlsCaCert    string
+	tlsCert      string
+	tlsKey       string
 }
 
 // Endpoint defines common operations for any of the various types of
@@ -216,6 +220,29 @@ func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.B
 		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: 2 * time.Minute}),
 	}
 
+	// load mutual TLS cert/key and root CA cert
+	if config.tlsCaCert != "" && config.tlsCert != "" && config.tlsKey != "" {
+		keyPair, err := tls.LoadX509KeyPair(config.tlsCert, config.tlsKey)
+		if err != nil {
+			log.Fatalf("Failed to load server TLS cert/key with error:%v", err)
+		}
+
+		cert, err := ioutil.ReadFile(config.tlsCaCert)
+		if err != nil {
+			log.Fatalf("Failed to load root CA cert file with error:%v", err)
+		}
+
+		pool := x509.NewCertPool()
+		pool.AppendCertsFromPEM(cert)
+
+		ta := credentials.NewTLS(&tls.Config{
+			Certificates: []tls.Certificate{keyPair},
+			ClientCAs:    pool,
+			ClientAuth:   tls.RequireAndVerifyClientCert,
+		})
+
+		opts = append(opts, grpc.Creds(ta))
+	}
 	s := grpc.NewServer(opts...)
 
 	// Register Services to the server.
