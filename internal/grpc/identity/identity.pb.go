@@ -24,13 +24,18 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// The roles available for users
 type Role int32
 
 const (
-	Role_GUEST      Role = 0
-	Role_NORMAL     Role = 1
+	// Every User has this role by default
+	Role_GUEST Role = 0
+	// Logged in user but with no special fees
+	Role_NORMAL Role = 1
+	// Logged in user who has subscribed to service
 	Role_SUBSCRIBED Role = 2
-	Role_ADMIN      Role = 3
+	// For Developers or Maintainers of the service
+	Role_ADMIN Role = 3
 )
 
 // Enum value maps for Role.
@@ -82,35 +87,29 @@ type User struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	// The username of the user.
+	// Required. The username of the user. Must be unique and length should be between 6 to 30 characters.
 	Username string `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
-	// The email address of the user.
+	// Required. The email address of the user. Must be unique
 	Email string `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
-	// The encode password of the user
+	// Required. The encoded password of the user
 	Password string `protobuf:"bytes,4,opt,name=password,proto3" json:"password,omitempty"`
-	// Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN
+	// Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest.
 	Role Role `protobuf:"varint,5,opt,name=role,proto3,enum=identity.Role" json:"role,omitempty"`
-	// The first name of user
+	// The first name of user. For example: 'Harry'
 	FirstName string `protobuf:"bytes,7,opt,name=first_name,json=firstName,proto3" json:"first_name,omitempty"`
-	// The last name of user
+	// The last name of user. For example: 'Potter'
 	LastName *string `protobuf:"bytes,8,opt,name=last_name,json=lastName,proto3,oneof" json:"last_name,omitempty"`
-	// The timestamp at which the user was created.
+	// Output only. The timestamp at which the user was created.
 	CreateTime *timestamp.Timestamp `protobuf:"bytes,9,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
-	// The latest timestamp at which the user was updated.
+	// Output only. The latest timestamp at which the user was updated.
 	UpdateTime *timestamp.Timestamp `protobuf:"bytes,10,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	// The age of the user in years.
 	Age *int32 `protobuf:"varint,11,opt,name=age,proto3,oneof" json:"age,omitempty"`
 	// The height of the user in feet.
 	HeightFeet *float64 `protobuf:"fixed64,12,opt,name=height_feet,json=heightFeet,proto3,oneof" json:"height_feet,omitempty"`
 	// The nickname of the user.
-	//
-	// (-- aip.dev/not-precedent: An empty string is a valid nickname.
-	//     Ordinarily, proto3_optional should not be used on a `string` field. --)
 	Nickname *string `protobuf:"bytes,13,opt,name=nickname,proto3,oneof" json:"nickname,omitempty"`
-	// Enables the receiving of notifications. The default is true if unset.
-	//
-	// (-- aip.dev/not-precedent: The default for the feature is true.
-	//     Ordinarily, the default for a `bool` field should be false. --)
+	// Enables the receiving of notifications. The default is false if unset.
 	EnableNotifications *bool `protobuf:"varint,14,opt,name=enable_notifications,json=enableNotifications,proto3,oneof" json:"enable_notifications,omitempty"`
 }
 
@@ -230,6 +229,8 @@ func (x *User) GetEnableNotifications() bool {
 	return false
 }
 
+// The request message for the identity.Identity\CreateUser
+// method.
 type CreateUserRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -278,6 +279,8 @@ func (x *CreateUserRequest) GetUser() *User {
 	return nil
 }
 
+// The response message for the identity.Identity\CreateUser
+// method.
 type CreateUserResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -325,6 +328,8 @@ func (x *CreateUserResponse) GetUsername() string {
 	return ""
 }
 
+// The request message for the identity.Identity\GetUser
+// method.
 type GetUserRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -373,6 +378,8 @@ func (x *GetUserRequest) GetUsername() string {
 	return ""
 }
 
+// The request message for the identity.Identity\UpdateUser
+// method.
 type UpdateUserRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -440,6 +447,8 @@ func (x *UpdateUserRequest) GetUpdateMask() *field_mask.FieldMask {
 	return nil
 }
 
+// The response message for the identity.Identity\UpdateUser
+// method.
 type UpdateUserResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -487,6 +496,8 @@ func (x *UpdateUserResponse) GetUsername() string {
 	return ""
 }
 
+// The request message for the identity.Identity\DeleteUser
+// method.
 type DeleteUserRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -535,7 +546,7 @@ func (x *DeleteUserRequest) GetUsername() string {
 	return ""
 }
 
-// The request message for the google.showcase.v1.Identity\ListUsers
+// The request message for the identity.Identity\ListUsers
 // method.
 type ListUsersRequest struct {
 	state         protoimpl.MessageState
@@ -597,7 +608,7 @@ func (x *ListUsersRequest) GetPageToken() string {
 	return ""
 }
 
-// The response message for the google.showcase.v1.Identity\ListUsers
+// The response message for the identity.Identity\ListUsers
 // method.
 type ListUsersResponse struct {
 	state         protoimpl.MessageState

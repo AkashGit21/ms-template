@@ -41,7 +41,7 @@ service IdentityService {
     };
   }
 
-  // Deletes a user, their profile, and all of their authored messages.
+  // Deletes a user, and their profile.
   rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
       delete: "/v1/users/{username}"
@@ -56,12 +56,16 @@ service IdentityService {
   }
 }
 
+// The roles available for users
 enum Role {
+  // Every User has this role by default
   GUEST = 0;
+  // Logged in user but with no special fees
   NORMAL = 1;
+  // Logged in user who has subscribed to service
   SUBSCRIBED = 2;
+  // For Developers or Maintainers of the service
   ADMIN = 3;
-
 }
 
 // A user.
@@ -74,29 +78,29 @@ message User {
   // // The resource ID of the user.
   // string id = 1;
 
-  // The username of the user.
+  // Required. The username of the user. Must be unique and length should be between 6 to 30 characters.
   string username = 2 [(google.api.field_behavior) = REQUIRED];
 
-  // The email address of the user.
+  // Required. The email address of the user. Must be unique
   string email = 3 [(google.api.field_behavior) = REQUIRED];
 
-  // The encode password of the user 
+  // Required. The encoded password of the user 
   string password = 4 [(google.api.field_behavior) = REQUIRED];
 
-  // Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN
+  // Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest.
   Role role = 5;
 
-  // The first name of user
+  // The first name of user. For example: 'Harry'
   string first_name = 7;
 
-  // The last name of user
+  // The last name of user. For example: 'Potter'
   optional string last_name = 8;
 
-  // The timestamp at which the user was created.
+  // Output only. The timestamp at which the user was created.
   google.protobuf.Timestamp create_time = 9
       [(google.api.field_behavior) = OUTPUT_ONLY];
 
-  // The latest timestamp at which the user was updated.
+  // Output only. The latest timestamp at which the user was updated.
   google.protobuf.Timestamp update_time = 10
       [(google.api.field_behavior) = OUTPUT_ONLY];
 
@@ -107,27 +111,27 @@ message User {
   optional double height_feet = 12;
 
   // The nickname of the user.
-  //
-  // (-- aip.dev/not-precedent: An empty string is a valid nickname.
-  //     Ordinarily, proto3_optional should not be used on a `string` field. --)
   optional string nickname = 13;
 
-  // Enables the receiving of notifications. The default is true if unset.
-  //
-  // (-- aip.dev/not-precedent: The default for the feature is true.
-  //     Ordinarily, the default for a `bool` field should be false. --)
+  // Enables the receiving of notifications. The default is false if unset.
   optional bool enable_notifications = 14;
 }
 
+// The request message for the identity.Identity\CreateUser
+// method.
 message CreateUserRequest {
   // The user to create.
   User user = 1;
 }
 
+// The response message for the identity.Identity\CreateUser
+// method.
 message CreateUserResponse {
   string username = 1;
 }
 
+// The request message for the identity.Identity\GetUser
+// method.
 message GetUserRequest {
   // The resource name of the requested user.
   string username = 1 [
@@ -136,6 +140,8 @@ message GetUserRequest {
   ];
 }
 
+// The request message for the identity.Identity\UpdateUser
+// method.
 message UpdateUserRequest {
 // The id of user to be updated
   string username = 1 [
@@ -155,10 +161,14 @@ message UpdateUserRequest {
   google.protobuf.FieldMask update_mask = 3;
 }
 
+// The response message for the identity.Identity\UpdateUser
+// method.
 message UpdateUserResponse {
   string username = 1;
 }
 
+// The request message for the identity.Identity\DeleteUser
+// method.
 message DeleteUserRequest {
   // The resource name of the user to delete.
   string username = 1 [
@@ -167,7 +177,7 @@ message DeleteUserRequest {
   ];
 }
 
-// The request message for the google.showcase.v1.Identity\ListUsers
+// The request message for the identity.Identity\ListUsers
 // method.
 message ListUsersRequest {
   // The maximum number of users to return. Server may return fewer users
@@ -180,7 +190,7 @@ message ListUsersRequest {
   string page_token = 2;
 }
 
-// The response message for the google.showcase.v1.Identity\ListUsers
+// The response message for the identity.Identity\ListUsers
 // method.
 message ListUsersResponse {
   // The list of users.

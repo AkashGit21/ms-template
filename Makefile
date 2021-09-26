@@ -30,12 +30,17 @@ clean:
 
 .PHONY: docker-run
 docker-run:
-	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-templatedocker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-template
+	echo -e "\nBuilding docker Image... \n\nThis may take a few minutes!\n"
+	docker build -t ms-template .
+
+	echo -e "\n\nRunning the container..."
+	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-template
+	echo -e "\n\nContainer is running successfully in the background! "
 
 
 .PHONY: gen
 gen:
-	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
+	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=:swagger --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
 
 
 .PHONY: help

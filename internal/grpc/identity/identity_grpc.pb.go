@@ -25,7 +25,7 @@ type IdentityServiceClient interface {
 	GetUser(ctx context.Context, in *GetUserRequest, opts ...grpc.CallOption) (*User, error)
 	// Updates a user.
 	UpdateUser(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*User, error)
-	// Deletes a user, their profile, and all of their authored messages.
+	// Deletes a user, and their profile.
 	DeleteUser(ctx context.Context, in *DeleteUserRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	// Lists all users.
 	ListUsers(ctx context.Context, in *ListUsersRequest, opts ...grpc.CallOption) (*ListUsersResponse, error)
@@ -94,7 +94,7 @@ type IdentityServiceServer interface {
 	GetUser(context.Context, *GetUserRequest) (*User, error)
 	// Updates a user.
 	UpdateUser(context.Context, *UpdateUserRequest) (*User, error)
-	// Deletes a user, their profile, and all of their authored messages.
+	// Deletes a user, and their profile.
 	DeleteUser(context.Context, *DeleteUserRequest) (*empty.Empty, error)
 	// Lists all users.
 	ListUsers(context.Context, *ListUsersRequest) (*ListUsersResponse, error)

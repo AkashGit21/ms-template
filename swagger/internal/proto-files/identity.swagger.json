@@ -1,0 +1,347 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "internal/proto-files/identity.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "IdentityService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/users": {
+      "get": {
+        "summary": "Lists all users.",
+        "operationId": "IdentityService_ListUsers",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/identityListUsersResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageSize",
+            "description": "The maximum number of users to return. Server may return fewer users\nthan requested. If unspecified, server will pick an appropriate default.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "pageToken",
+            "description": "The value of google.showcase.v1.ListUsersResponse.next_page_token\nreturned from the previous call to\n`google.showcase.v1.Identity\\ListUsers` method.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "IdentityService"
+        ]
+      },
+      "post": {
+        "summary": "Creates a user.",
+        "operationId": "IdentityService_CreateUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/identityCreateUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "The user to create.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/identityUser"
+            }
+          }
+        ],
+        "tags": [
+          "IdentityService"
+        ]
+      }
+    },
+    "/v1/users/{username}": {
+      "get": {
+        "summary": "Retrieves the User with the given uri.",
+        "operationId": "IdentityService_GetUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/identityUser"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "description": "The resource name of the requested user.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "IdentityService"
+        ]
+      },
+      "delete": {
+        "summary": "Deletes a user, and their profile.",
+        "operationId": "IdentityService_DeleteUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "description": "The resource name of the user to delete.",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "IdentityService"
+        ]
+      },
+      "patch": {
+        "summary": "Updates a user.",
+        "operationId": "IdentityService_UpdateUser",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/identityUser"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "username",
+            "description": "The id of user to be updated",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "user": {
+                  "$ref": "#/definitions/identityUser",
+                  "description": "// The user to update."
+                },
+                "updateMask": {
+                  "type": "string",
+                  "description": "The field mask to determine which fields are to be updated. If empty, the\nserver will assume all fields are to be updated."
+                }
+              },
+              "description": "The request message for the identity.Identity\\UpdateUser\nmethod."
+            }
+          }
+        ],
+        "tags": [
+          "IdentityService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "identityCreateUserResponse": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        }
+      },
+      "description": "The response message for the identity.Identity\\CreateUser\nmethod."
+    },
+    "identityListUsersResponse": {
+      "type": "object",
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/identityUser"
+          },
+          "description": "The list of users."
+        },
+        "nextPageToken": {
+          "type": "string",
+          "description": "A token to retrieve next page of results.\nPass this value in ListUsersRequest.page_token field in the subsequent\ncall to `google.showcase.v1.Message\\ListUsers` method to retrieve the\nnext page of results."
+        }
+      },
+      "description": "The response message for the identity.Identity\\ListUsers\nmethod."
+    },
+    "identityRole": {
+      "type": "string",
+      "enum": [
+        "GUEST",
+        "NORMAL",
+        "SUBSCRIBED",
+        "ADMIN"
+      ],
+      "default": "GUEST",
+      "description": "- GUEST: Every User has this role by default\n - NORMAL: Logged in user but with no special fees\n - SUBSCRIBED: Logged in user who has subscribed to service\n - ADMIN: For Developers or Maintainers of the service",
+      "title": "The roles available for users"
+    },
+    "identityUser": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Required. The username of the user. Must be unique and length should be between 6 to 30 characters.",
+          "required": [
+            "username"
+          ]
+        },
+        "email": {
+          "type": "string",
+          "title": "Required. The email address of the user. Must be unique",
+          "required": [
+            "email"
+          ]
+        },
+        "password": {
+          "type": "string",
+          "title": "Required. The encoded password of the user",
+          "required": [
+            "password"
+          ]
+        },
+        "role": {
+          "$ref": "#/definitions/identityRole",
+          "description": "Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest."
+        },
+        "firstName": {
+          "type": "string",
+          "title": "The first name of user. For example: 'Harry'"
+        },
+        "lastName": {
+          "type": "string",
+          "title": "The last name of user. For example: 'Potter'"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The timestamp at which the user was created.",
+          "readOnly": true
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The latest timestamp at which the user was updated.",
+          "readOnly": true
+        },
+        "age": {
+          "type": "integer",
+          "format": "int32",
+          "description": "The age of the user in years."
+        },
+        "heightFeet": {
+          "type": "number",
+          "format": "double",
+          "description": "The height of the user in feet."
+        },
+        "nickname": {
+          "type": "string",
+          "description": "The nickname of the user."
+        },
+        "enableNotifications": {
+          "type": "boolean",
+          "description": "Enables the receiving of notifications. The default is false if unset."
+        }
+      },
+      "description": "A user.",
+      "required": [
+        "username",
+        "email",
+        "password"
+      ]
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

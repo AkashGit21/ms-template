@@ -1,0 +1,410 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "internal/proto-files/movie.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "MovieService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/movies": {
+      "get": {
+        "summary": "Fetches the movie with given ID",
+        "operationId": "MovieService_ListMovies",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/movieListMoviesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "pageToken",
+            "description": "The page_token for that page to be uniquely identified.",
+            "in": "query",
+            "required": false,
+            "type": "string"
+          },
+          {
+            "name": "pageSize",
+            "description": "The maximum number of objects to return. Server may return fewer objects\nthan requested. If unspecified, server will pick an appropriate default.",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      },
+      "post": {
+        "summary": "Creates the movie with provided values",
+        "operationId": "MovieService_CreateMovie",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/movieCreateMovieResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/movieMovie"
+            }
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      }
+    },
+    "/v1/movies/{id}": {
+      "get": {
+        "summary": "Fetches the movie with given ID",
+        "operationId": "MovieService_GetMovie",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/movieMovie"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Required. The unique ID of movie",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      },
+      "delete": {
+        "summary": "Delete an existing Record with given ID",
+        "operationId": "MovieService_DeleteMovie",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "properties": {}
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      },
+      "put": {
+        "summary": "Update an already present Movie with new values",
+        "operationId": "MovieService_UpdateMovie",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/movieUpdateMovieResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/movieMovie"
+            }
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      },
+      "patch": {
+        "summary": "Update an already present Movie with new values",
+        "operationId": "MovieService_PartialUpdateMovie",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/moviePartialUpdateMovieResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "description": "Unique ID for the Movie",
+            "in": "path",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "summary": {
+                  "type": "string",
+                  "title": "Brief summary of the Movie",
+                  "required": [
+                    "summary"
+                  ]
+                },
+                "cast": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "Group of actors who make up a Film or stage play"
+                },
+                "tags": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/definitions/movieTag"
+                  },
+                  "title": "Tags related to the Movie",
+                  "required": [
+                    "tags"
+                  ]
+                },
+                "director": {
+                  "type": "string",
+                  "title": "Director of film"
+                },
+                "writers": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "title": "The author(s) of film"
+                }
+              },
+              "description": "The request message for the movie.MovieService\\PartialUpdateMovie\nmethod.",
+              "required": [
+                "summary",
+                "tags"
+              ]
+            }
+          }
+        ],
+        "tags": [
+          "MovieService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "movieCreateMovieResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "description": "The response message for the movie.MovieService\\CreateMovie\nmethod."
+    },
+    "movieListMoviesResponse": {
+      "type": "object",
+      "properties": {
+        "movies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/movieMovie"
+          }
+        },
+        "nextPageToken": {
+          "type": "string"
+        }
+      },
+      "description": "The request message for the movie.MovieService\\ListMovies\nmethod."
+    },
+    "movieMovie": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Output only. The Unique ID for the Movie",
+          "readOnly": true
+        },
+        "name": {
+          "type": "string",
+          "title": "Required. Name of the Movie",
+          "required": [
+            "name"
+          ]
+        },
+        "summary": {
+          "type": "string",
+          "title": "Brief summary of the Movie"
+        },
+        "cast": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Group of actors who make up a Film or stage play"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/movieTag"
+          },
+          "title": "Required. Tags related to the Movie",
+          "required": [
+            "tags"
+          ]
+        },
+        "director": {
+          "type": "string",
+          "title": "Director of film"
+        },
+        "writers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "The author(s) of film"
+        }
+      },
+      "title": "The movie",
+      "required": [
+        "name",
+        "tags"
+      ]
+    },
+    "moviePartialUpdateMovieResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "description": "The response message for the movie.MovieService\\PartialUpdateMovie\nmethod."
+    },
+    "movieTag": {
+      "type": "string",
+      "enum": [
+        "UNDEFINED_TAG",
+        "Action",
+        "Adventure",
+        "Fantasy",
+        "Comedy"
+      ],
+      "default": "UNDEFINED_TAG",
+      "description": "- UNDEFINED_TAG: Default tag\n - Action: Action tag\n - Adventure: Adventure tag\n - Fantasy: Fantasy tag\n - Comedy: Comedy tag",
+      "title": "Tags describing Movie characteristics"
+    },
+    "movieUpdateMovieResponse": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "description": "The response message for the movie.MovieService\\UpdateMovie\nmethod."
+    },
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    }
+  }
+}

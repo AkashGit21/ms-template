@@ -5,6 +5,7 @@ package auth;
 option go_package = "internal/grpc/auth; authpb";
 
 import "pkg/google/api/annotations.proto";
+import "pkg/google/api/field_behavior.proto";
 
 // A simple authentication service.
 service AuthService {
@@ -18,9 +19,20 @@ service AuthService {
   }
 }
 
+// The request message for the auth.AuthService\Login
+// method.
 message LoginRequest {
-  string username = 1;
-  string password = 2;
+  // Required. The username of user
+  string username = 1
+  [(google.api.field_behavior) = REQUIRED];
+
+  // Required. The password of user
+  string password = 2
+  [(google.api.field_behavior) = REQUIRED];
 }
 
-message LoginResponse { string access_token = 1; }
+// The response message for the auth.AuthService\Login
+// method.
+message LoginResponse { 
+  string access_token = 1; 
+}

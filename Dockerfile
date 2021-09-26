@@ -26,6 +26,7 @@ COPY --from=builder /go/bin/ms-server /go/bin/ms-server
 # Expose ports
 EXPOSE 8081
 EXPOSE 8082
+EXPOSE 8084
 
 # Run the server.
 ENTRYPOINT ["/go/bin/ms-server"]

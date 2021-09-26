@@ -57,6 +57,8 @@ service MovieService {
   }
 }
 
+// The request message for the movie.MovieService\ListMovies
+// method.
 message ListMoviesRequest {
   // The page_token for that page to be uniquely identified
   string page_token = 1;
@@ -66,32 +68,48 @@ message ListMoviesRequest {
   int32 page_size = 2;
 }
 
+// The request message for the movie.MovieService\ListMovies
+// method.
 message ListMoviesResponse {
   repeated Movie movies = 1;
   string next_page_token = 2;
 }
 
+// The request message for the movie.MovieService\GetMovie
+// method.
 message GetMovieRequest {
-  string id = 1;
+  // Required. The unique ID of movie
+  string id = 1
+  [(google.api.field_behavior) = OUTPUT_ONLY];
 }
 
+// The request message for the movie.MovieService\CreateMovie
+// method.
 message CreateMovieRequest {
   Movie movie = 1; 
 }
 
+// The response message for the movie.MovieService\CreateMovie
+// method.
 message CreateMovieResponse {
   string id = 1;
 }
 
+// The request message for the movie.MovieService\UpdateMovie
+// method.
 message UpdateMovieRequest {
   string id = 1;
   Movie movie = 2;
 }
 
+// The response message for the movie.MovieService\UpdateMovie
+// method.
 message UpdateMovieResponse {
   string id = 1;
 }
 
+// The request message for the movie.MovieService\PartialUpdateMovie
+// method.
 message PartialUpdateMovieRequest {
   
   // Unique ID for the Movie
@@ -117,27 +135,40 @@ message PartialUpdateMovieRequest {
   repeated string writers = 8;
 }
 
+// The response message for the movie.MovieService\PartialUpdateMovie
+// method.
 message PartialUpdateMovieResponse {
   string id = 1;
 }
 
+// The request message for the movie.MovieService\DeleteMovie
+// method.
 message DeleteMovieRequest {
   string id = 1;
 }
 
+// Tags describing Movie characteristics
 enum Tag {
+  // Default tag 
   UNDEFINED_TAG = 0;
+  // Action tag
   Action = 1;
+  // Adventure tag
   Adventure = 2;
+  // Fantasy tag
   Fantasy = 3;
+  // Comedy tag
+  Comedy = 4;  
+
 }
 
+// The movie
 message Movie {
-  // Unique ID for the Movie
+  // Output only. The Unique ID for the Movie
   string id = 1
     [(google.api.field_behavior) = OUTPUT_ONLY];
 
-  // Name of the Movie
+  // Required. Name of the Movie
   string name = 2
     [(google.api.field_behavior) = REQUIRED];
 
@@ -147,7 +178,7 @@ message Movie {
   // Group of actors who make up a Film or stage play
   repeated string cast = 5;
 
-  // Tags related to the Movie
+  // Required. Tags related to the Movie
   repeated Tag tags = 6
     [(google.api.field_behavior) = REQUIRED];
 
