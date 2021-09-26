@@ -22,7 +22,6 @@ type Backend struct {
 	// Supporting protos
 
 	// Other supporting data structures
-	StdLog, ErrLog *log.Logger
-
-	// ObserverRegistry server.GrpcObserverRegistry
+	StdLog, ErrLog   *log.Logger
+	ObserverRegistry server.GrpcObserverRegistry
 }

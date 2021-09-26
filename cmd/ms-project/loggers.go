@@ -53,3 +53,35 @@ func dumpIncomingHeaders(ctx context.Context) {
 		}
 	}
 }
+
+func (l *loggerObserver) ObserveStreamRequest(
+	ctx context.Context,
+	req interface{},
+	info *grpc.StreamServerInfo,
+	_ error) {
+	stdLog.Printf("%s Stream for Method: %s\n", streamType(info), info.FullMethod)
+	if Verbose {
+		dumpIncomingHeaders(ctx)
+	}
+	stdLog.Printf("    Receiving Message:  %v\n", req)
+	stdLog.Println("")
+}
+
+func (l *loggerObserver) ObserveStreamResponse(
+	_ context.Context,
+	resp interface{},
+	info *grpc.StreamServerInfo,
+	_ error) {
+	stdLog.Printf("%s Stream for Method: %s\n", streamType(info), info.FullMethod)
+	stdLog.Printf("    Sending Message:  %+v\n", resp)
+	stdLog.Println("")
+}
+
+func streamType(info *grpc.StreamServerInfo) string {
+	if info.IsClientStream && info.IsServerStream {
+		return "Bi-directional"
+	} else if info.IsClientStream {
+		return "Client"
+	}
+	return "Server"
+}

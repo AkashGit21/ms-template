@@ -55,8 +55,7 @@ func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 // }
 
 func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string) error {
-	log.Println("Inside Authorize!")
-	log.Println("Context: ", ctx)
+
 	accessibleRoles, ok := interceptor.accessibleRoles[method]
 	if !ok {
 		// everyone can access

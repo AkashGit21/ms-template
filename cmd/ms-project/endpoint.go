@@ -9,8 +9,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"strings"
-	"sync"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
@@ -20,7 +21,6 @@ import (
 	"github.com/AkashGit21/ms-project/internal/server/services"
 	fallback "github.com/googleapis/grpc-fallback-go/server"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/soheilhy/cmux"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -31,156 +31,34 @@ import (
 // RuntimeConfig has the run-time settings necessary to run the
 // ms-project servers.
 type RuntimeConfig struct {
+	port         int
 	httpPort     int
-	port         string
-	fallbackPort string
+	fallbackPort int
 	tlsCaCert    string
 	tlsCert      string
 	tlsKey       string
 }
 
-// Endpoint defines common operations for any of the various types of
-// transport-specific network endpoints the application supports
-type Endpoint interface {
-	// Serve beings the listen-and-serve loop for this
-	// Endpoint. It typically blocks until the server is shut
-	// down. The error it returns depends on the underlying
-	// implementation.
-	Serve() error
-
-	// Shutdown causes the currently running Endpoint to
-	// terminate. The error it returns depends on the underlying
-	// implementation.
-	Shutdown() error
-}
-
-// CreateAllEndpoints returns an Endpoint that can serve gRPC and
-// HTTP/REST connections (on conf.port) and gRPC-fallback
-// connections (on conf.fallbackPort)
-func createAllEndpoints(conf RuntimeConfig) Endpoint {
-	// Ensure the port is of the right form.
-	if !strings.HasPrefix(conf.port, ":") {
-		conf.port = ":" + conf.port
-	}
-
-	// Start listening.
-	lis, err := net.Listen("tcp", conf.port)
-	if err != nil {
-		log.Fatalf("Server failed to listen on port '%s': %v", conf.port, err)
-	}
-	stdLog.Printf("Server listening on port: %s", conf.port)
-
-	m := cmux.New(lis)
-	httpListener := m.Match(cmux.HTTP1Fast())
-	// // cmux.Any() is needed below to get mTLS to work for
-	// // gRPC, and that in turn means the order of the matchers matters. See
-	// // https://github.com/open-telemetry/opentelemetry-collector/issues/2732
-	grpcListener := m.Match(cmux.HTTP2HeaderField("content-type", "application/grpc"))
-
-	backend := createBackends()
-	gRPCServer := newEndpointGRPC(grpcListener, conf, backend)
-	restServer := newEndpointREST(httpListener, conf, backend)
-	cmuxServer := newEndpointMux(m, gRPCServer, restServer)
-	return cmuxServer
-}
-
-// endpointMux is an Endpoint for cmux, the connection multiplexer
-// allowing different types of connections on the same port.
-//
-// We choose not to use grpc.Server.ServeHTTP because it is
-// experimental and does not support some gRPC features available
-// through grpc.Server.Serve. (cf
-// https://godoc.org/google.golang.org/grpc#Server.ServeHTTP)
-type endpointMux struct {
-	endpoints []Endpoint
-	cmux      cmux.CMux
-	mux       sync.Mutex
-}
-
-func newEndpointMux(cmuxEndpoint cmux.CMux, endpoints ...Endpoint) Endpoint {
-	return &endpointMux{
-		endpoints: endpoints,
-		cmux:      cmuxEndpoint,
-	}
-}
-
-func (em *endpointMux) String() string {
-	return "endpoint multiplexer"
-}
-
-func (em *endpointMux) Serve() error {
-	g := new(errgroup.Group)
-	for idx, endpt := range em.endpoints {
-		if endpt != nil {
-			stdLog.Printf("Starting endpoint %d: %s", idx, endpt)
-			endpoint := endpt
-			g.Go(func() error {
-				err := endpoint.Serve()
-				err2 := em.Shutdown()
-				if err != nil {
-					return err
-				}
-				return err2
-			})
-		}
-	}
-	if em.cmux != nil {
-		stdLog.Printf("Starting %s", em)
-
-		g.Go(func() error {
-			err := em.cmux.Serve()
-			err2 := em.Shutdown()
-			if err != nil {
-				return err
-			}
-			return err2
-
-		})
-	}
-	return g.Wait()
-}
-
-func (em *endpointMux) Shutdown() error {
-	em.mux.Lock()
-	defer em.mux.Unlock()
-
-	var err error
-	if em.cmux != nil {
-		// TODO: Wait for https://github.com/soheilhy/cmux/pull/69 (due to
-		// https://github.com/soheilhy/cmux/pull/69#issuecomment-712928041.)
-		//
-		// err = em.mux.Close()
-		em.cmux = nil
-	}
-
-	for idx, endpt := range em.endpoints {
-		if endpt != nil {
-			// TODO: Wait for https://github.com/soheilhy/cmux/pull/69
-			// newErr := endpt.Shutdown()
-			// if err==nil {
-			// 	err = newErr
-			// }
-			em.endpoints[idx] = nil
-		}
-	}
-	return err
-}
-
-// endpointGRPC is an Endpoint for gRPC connections to the Showcase
-// server.
-type endpointGRPC struct {
-	server         *grpc.Server
-	fallbackServer *fallback.FallbackServer
-	listener       net.Listener
-	mux            sync.Mutex
-}
-
 func accessRoles() map[string][]string {
 	const movieServicePath = "/movie.MovieService/"
+	const identityServicePath = "/identity.IdentityService/"
+	const authServicePath = "/auth.AuthService/"
 
 	return map[string][]string{
-		movieServicePath + "ListMovies":  {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
-		movieServicePath + "GetMovie":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+
+		// Roles for IdentityService
+		identityServicePath + "ListUsers": {"ADMIN"},
+		// identityServicePath + "GetUser":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		// identityServicePath + "CreateUser": {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		identityServicePath + "UpdateUser": {"ADMIN", "NORMAL", "SUBSCRIBED"},
+		identityServicePath + "DeleteUser": {"ADMIN", "NORMAL", "SUBSCRIBED"},
+
+		// Roles for AuthService
+		// authServicePath + "Login": {"GUEST"},
+
+		// Roles for MovieService
+		// movieServicePath + "ListMovies":  {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		// movieServicePath + "GetMovie":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
 		movieServicePath + "CreateMovie": {"ADMIN", "SUBSCRIBED"},
 		movieServicePath + "UpdateMovie": {"ADMIN", "SUBSCRIBED"},
 		movieServicePath + "DeleteMovie": {"ADMIN", "SUBSCRIBED"},
@@ -198,6 +76,12 @@ func createBackends() *services.Backend {
 	authSrv.JWT = jm
 	authI := server.NewAuthInterceptor(jm, accessRoles())
 
+	logger := &loggerObserver{}
+	observerRegistry := server.ShowcaseObserverRegistry()
+	observerRegistry.RegisterUnaryObserver(logger)
+	observerRegistry.RegisterStreamRequestObserver(logger)
+	observerRegistry.RegisterStreamResponseObserver(logger)
+
 	return &services.Backend{
 		IdentityServer: identitySrv,
 		AuthServer:     authSrv,
@@ -206,17 +90,90 @@ func createBackends() *services.Backend {
 
 		StdLog: stdLog,
 		ErrLog: errLog,
+
+		ObserverRegistry: observerRegistry,
 	}
 }
 
-func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.Backend) Endpoint {
+type Servers struct {
+	Backend        *services.Backend
+	gRPCServer     *grpc.Server
+	httpServer     *http.Server
+	fallbackServer *fallback.FallbackServer
 
-	// authI := server.NewAuthInterceptor()
+	httpListener net.Listener
+	gRPCListener net.Listener
+}
+
+func (s *Servers) InitiateServers(endpoint string, config RuntimeConfig, backend *services.Backend) {
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return s.initiateGRPCServer(endpoint, config)
+	})
+
+	g.Go(func() error {
+		return s.initiateHTTPServer(endpoint, config)
+	})
+
+	select {
+	case <-interrupt:
+		break
+	case <-ctx.Done():
+		break
+	}
+
+	log.Println("received shutdown signal")
+
+	// Clean-up process for both HTTP and gRPC servers
+	if s.httpServer != nil {
+		log.Println("Shutting httpServer!")
+		err := s.httpServer.Shutdown(ctx)
+		if err != nil {
+			stdLog.Printf("Error while stopping REST server! %v", err)
+		}
+		stdLog.Printf("Stopped the REST server!")
+		s.httpServer = nil
+	}
+	if s.gRPCServer != nil {
+		log.Println("Shutting gRPCServer!")
+		s.gRPCServer.GracefulStop()
+		stdLog.Printf("Stopped the gRPC server!")
+		s.gRPCServer = nil
+	}
+
+	err := g.Wait()
+	if err != nil {
+		log.Println("server returning an error: ", err)
+		os.Exit(2)
+	}
+}
+
+// Starts the gRPC Server
+func (s *Servers) initiateGRPCServer(endpoint string, config RuntimeConfig) error {
+	addr := fmt.Sprintf("%s:%d", endpoint, config.port)
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("gRPC server: failed to listen: %v", err)
+		os.Exit(2)
+	}
+	s.gRPCListener = ln
 
 	opts := []grpc.ServerOption{
-		// grpc.StreamInterceptor(backend.ObserverRegistry.StreamInterceptor),
-		// grpc.UnaryInterceptor(backend.ObserverRegistry.UnaryInterceptor),
-		grpc.UnaryInterceptor(backend.Interceptor.Unary()),
+		grpc.ChainUnaryInterceptor(
+			s.Backend.Interceptor.Unary(),
+			s.Backend.ObserverRegistry.UnaryInterceptor,
+		),
+		// MaxConnectionAge is just to avoid long connection, to facilitate load balancing
+		// MaxConnectionAgeGrace will torn them, default to infinity
 		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: 2 * time.Minute}),
 	}
 
@@ -243,130 +200,81 @@ func newEndpointGRPC(lis net.Listener, config RuntimeConfig, backend *services.B
 
 		opts = append(opts, grpc.Creds(ta))
 	}
-	s := grpc.NewServer(opts...)
 
-	// Register Services to the server.
-	identitypb.RegisterIdentityServiceServer(s, backend.IdentityServer)
-	moviepb.RegisterMovieServiceServer(s, backend.MovieServer)
-	authpb.RegisterAuthServiceServer(s, backend.AuthServer)
+	s.gRPCServer = grpc.NewServer(opts...)
 
-	fb := fallback.NewServer(config.fallbackPort, "localhost"+config.port)
+	s.RegisterGRPCService()
+	log.Printf("gRPC server serving at %s", addr)
+
+	fb := fallback.NewServer(fmt.Sprintf("%s:%d", endpoint, config.fallbackPort), fmt.Sprintf("%s:%d", endpoint, config.port))
+	s.fallbackServer = fb
 
 	// Register reflection service on gRPC server.
-	reflection.Register(s)
+	reflection.Register(s.gRPCServer)
 
-	return &endpointGRPC{
-		server:         s,
-		fallbackServer: fb,
-		listener:       lis,
-	}
+	return s.gRPCServer.Serve(ln)
 }
 
-func (eg *endpointGRPC) String() string {
-	return "gRPC endpoint"
-}
+// Starts the REST/HTTP Server
+func (s *Servers) initiateHTTPServer(endpoint string, config RuntimeConfig) error {
+	addr := fmt.Sprintf("%s:%d", endpoint, config.httpPort)
 
-func (eg *endpointGRPC) Serve() error {
-	defer eg.Shutdown()
-	if eg.fallbackServer != nil {
-		stdLog.Printf("Listening for gRPC-fallback connections")
-		eg.fallbackServer.StartBackground()
+	lis, err := net.Listen("tcp", addr)
+	if err != nil {
+		log.Fatalf("REST server: failed to listen: %v", err)
 	}
-	if eg.server != nil {
-		stdLog.Printf("Listening for gRPC connections")
-		return eg.server.Serve(eg.listener)
-	}
-	return fmt.Errorf("gRPC server not set up")
-}
-
-func (eg *endpointGRPC) Shutdown() error {
-	eg.mux.Lock()
-	defer eg.mux.Unlock()
-
-	if eg.fallbackServer != nil {
-		stdLog.Printf("Stopping gRPC-fallback connections")
-		eg.fallbackServer.Shutdown()
-		eg.fallbackServer = nil
-	}
-
-	if eg.server != nil {
-		stdLog.Printf("Stopping gRPC connections")
-		eg.server.GracefulStop()
-		eg.server = nil
-	}
-	stdLog.Printf("Stopped gRPC")
-	return nil
-}
-
-// endpointREST is an Endpoint for HTTP/REST connections to the ms-project
-// server.
-type endpointREST struct {
-	server   *http.Server
-	listener net.Listener
-	mux      sync.Mutex
-}
-
-func newEndpointREST(lis net.Listener, config RuntimeConfig, backend *services.Backend) *endpointREST {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	s.httpListener = lis
 
 	mux := runtime.NewServeMux()
+	dialAddr := fmt.Sprintf(":%d", config.port)
+	s.RegisterHTTPService(dialAddr, mux)
 
-	err := identitypb.RegisterIdentityServiceHandlerServer(ctx, mux, backend.IdentityServer)
-	if err != nil {
-		log.Printf("failed to Register Identity server: %v", err)
-		return nil
-	}
-
-	err = moviepb.RegisterMovieServiceHandlerServer(ctx, mux, backend.MovieServer)
-	if err != nil {
-		log.Printf("failed to Register Movie server: %v", err)
-		return nil
-	}
-
-	err = authpb.RegisterAuthServiceHandlerServer(ctx, mux, backend.AuthServer)
-	if err != nil {
-		log.Printf("failed to Register Movie server: %v", err)
-		return nil
-	}
-
-	addr := fmt.Sprintf("localhost:%d", config.httpPort)
-	httpServer := &http.Server{
+	httpSrv := &http.Server{
 		Addr:         addr,
 		Handler:      mux,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
 	}
+	s.httpServer = httpSrv
+	log.Printf("REST server serving at %s", addr)
 
-	return &endpointREST{
-		server:   httpServer,
-		listener: lis,
-	}
-}
-
-func (er *endpointREST) String() string {
-	return "HTTP/REST endpoint"
-}
-
-func (er *endpointREST) Serve() error {
-	defer er.Shutdown()
-	if er.server != nil {
-		stdLog.Printf("Listening for REST connections")
-		return er.server.Serve(er.listener)
+	if err = s.httpServer.Serve(lis); err != nil && err != http.ErrServerClosed {
+		return err
 	}
 	return nil
 }
 
-func (er *endpointREST) Shutdown() error {
-	er.mux.Lock()
-	defer er.mux.Unlock()
-	var err error
-	if er.server != nil {
-		stdLog.Printf("Stopping REST connections")
-		err = er.server.Shutdown(context.Background())
-		er.server = nil
+// Register all the services required for gRPC server
+func (s *Servers) RegisterGRPCService() {
+
+	identitypb.RegisterIdentityServiceServer(s.gRPCServer, s.Backend.IdentityServer)
+	authpb.RegisterAuthServiceServer(s.gRPCServer, s.Backend.AuthServer)
+	moviepb.RegisterMovieServiceServer(s.gRPCServer, s.Backend.MovieServer)
+
+}
+
+// Register all the services required for HTTP/REST server
+func (s *Servers) RegisterHTTPService(endpoint string, mux *runtime.ServeMux) error {
+
+	opts := []grpc.DialOption{
+		grpc.WithInsecure(),
+		grpc.WithTimeout(2 * time.Second),
 	}
-	stdLog.Printf("Stopped REST")
-	return err
+
+	err := identitypb.RegisterIdentityServiceHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Printf("failed to Register Identity HTTP server: %v", err)
+		return err
+	}
+	err = authpb.RegisterAuthServiceHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Printf("failed to Register Auth HTTP server: %v", err)
+		return err
+	}
+	err = moviepb.RegisterMovieServiceHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Printf("failed to Register Movie HTTP server: %v", err)
+		return err
+	}
+	return nil
 }

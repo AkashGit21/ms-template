@@ -44,7 +44,9 @@ func (jm *JWTManager) GenerateToken(user *identitypb.User) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(jm.secretKey))
+
+	out, err := token.SignedString([]byte(jm.secretKey))
+	return fmt.Sprintf("Basic %v", out), err
 }
 
 func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) {
