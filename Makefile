@@ -7,9 +7,7 @@ GOBUILD=$(GOCMD) build
 GOINSTALL=$(GOCMD) install
 
 BINARY_NAME=ms-server
-BINARY_LINUX=tyk
 TAGS=coprocess grpc goplugin
-CONF=tyk.conf
 
 TEST_REGEX=.
 TEST_COUNT=1
@@ -34,9 +32,13 @@ docker-run:
 	docker build -t ms-template .
 
 	echo -e "\n\nRunning the container..."
-	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp ms-template
+	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp --name ms-server ms-template
 	echo -e "\n\nContainer is running successfully in the background! "
 
+.PHONY: docker-stop
+docker-stop:
+	echo -e "\n\nStopping the docker container..."
+	docker stop ms-server
 
 .PHONY: gen
 gen:
