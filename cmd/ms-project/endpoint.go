@@ -105,7 +105,7 @@ type Servers struct {
 	gRPCListener net.Listener
 }
 
-func (s *Servers) InitiateServers(endpoint string, config RuntimeConfig, backend *services.Backend) {
+func (s *Servers) initiateServers(endpoint string, config RuntimeConfig, backend *services.Backend) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -132,8 +132,12 @@ func (s *Servers) InitiateServers(endpoint string, config RuntimeConfig, backend
 	}
 
 	log.Println("received shutdown signal")
+	s.closeServers()
+}
 
-	// Clean-up process for both HTTP and gRPC servers
+// Clean-up process for both HTTP and gRPC servers
+func (s *Servers) closeServers() {
+	// Shutdown the REST server
 	if s.httpServer != nil {
 		log.Println("Shutting httpServer!")
 		err := s.httpServer.Shutdown(ctx)
@@ -143,17 +147,13 @@ func (s *Servers) InitiateServers(endpoint string, config RuntimeConfig, backend
 		stdLog.Printf("Stopped the REST server!")
 		s.httpServer = nil
 	}
+
+	// Shutdown the gRPC server
 	if s.gRPCServer != nil {
 		log.Println("Shutting gRPCServer!")
 		s.gRPCServer.GracefulStop()
 		stdLog.Printf("Stopped the gRPC server!")
 		s.gRPCServer = nil
-	}
-
-	err := g.Wait()
-	if err != nil {
-		log.Println("server returning an error: ", err)
-		os.Exit(2)
 	}
 }
 
@@ -203,7 +203,7 @@ func (s *Servers) initiateGRPCServer(endpoint string, config RuntimeConfig) erro
 
 	s.gRPCServer = grpc.NewServer(opts...)
 
-	s.RegisterGRPCService()
+	s.registerGRPCService()
 	log.Printf("gRPC server serving at %s", addr)
 
 	fb := fallback.NewServer(fmt.Sprintf("%s:%d", endpoint, config.fallbackPort), fmt.Sprintf("%s:%d", endpoint, config.port))
@@ -227,7 +227,7 @@ func (s *Servers) initiateHTTPServer(endpoint string, config RuntimeConfig) erro
 
 	mux := runtime.NewServeMux()
 	dialAddr := fmt.Sprintf(":%d", config.port)
-	s.RegisterHTTPService(dialAddr, mux)
+	s.registerHTTPService(dialAddr, mux)
 
 	httpSrv := &http.Server{
 		Addr:         addr,
@@ -245,16 +245,15 @@ func (s *Servers) initiateHTTPServer(endpoint string, config RuntimeConfig) erro
 }
 
 // Register all the services required for gRPC server
-func (s *Servers) RegisterGRPCService() {
+func (s *Servers) registerGRPCService() {
 
 	identitypb.RegisterIdentityServiceServer(s.gRPCServer, s.Backend.IdentityServer)
 	authpb.RegisterAuthServiceServer(s.gRPCServer, s.Backend.AuthServer)
 	moviepb.RegisterMovieServiceServer(s.gRPCServer, s.Backend.MovieServer)
-
 }
 
 // Register all the services required for HTTP/REST server
-func (s *Servers) RegisterHTTPService(endpoint string, mux *runtime.ServeMux) error {
+func (s *Servers) registerHTTPService(endpoint string, mux *runtime.ServeMux) error {
 
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),

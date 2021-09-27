@@ -55,3 +55,8 @@ help:
 .PHONY: run
 run:
 	go run ./cmd/ms-project run
+
+.PHONY: test
+test:
+	echo -e "\n\n Testing..."
+	go test -v -cover ./...

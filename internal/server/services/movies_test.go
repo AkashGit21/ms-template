@@ -16,16 +16,21 @@ func TestMoviesService(t *testing.T) {
 	defer cancel()
 
 	// Create some basic configuration for testing
-	conf := generateMoviesConfig()
+	conf, err := generateMoviesConfig(ctx)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+
 	// Apply POST call testing and get ID in case of success
-	objectId, err := testPostMovie(ctx, conf)
+	objectId, err := testPostMovie(conf)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
 	log.Println("POST Call Response is: ", objectId)
 	// Verify that the fields of Response and provided Configuration matches
-	err = testGetMovieById(ctx, objectId, conf)
+	err = testGetMovieById(objectId, conf)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -34,13 +39,13 @@ func TestMoviesService(t *testing.T) {
 	// Update the configuration for further Testing
 	updateMoviesConfig(conf)
 	// Apply PUT call testing and get ID in case of success
-	objectId, err = testPutMovieById(ctx, objectId, conf)
+	objectId, err = testPutMovieById(objectId, conf)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
 	// Verify that the fields of Response and provided Configuration matches
-	err = testGetMovieById(ctx, objectId, conf)
+	err = testGetMovieById(objectId, conf)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -49,21 +54,34 @@ func TestMoviesService(t *testing.T) {
 	// TODO: Unit Testing for PATCH call
 
 	// Apply DELETE call testing and get ID in case of success
-	err = testDeleteMovieById(ctx, objectId, conf)
+	err = testDeleteMovieById(objectId, conf)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
 	}
-	err = testGetMovieById(ctx, objectId, conf)
+	err = testGetMovieById(objectId, conf)
 	if err == nil {
 		t.Errorf("Record is not deleted. DELETE call failed!")
 		return
 	}
 }
 
-func generateMoviesConfig() *TestConfig {
+func generateMoviesConfig(ctx context.Context) (*TestConfig, error) {
+
+	iSrv := NewIdentityServer()
+	authSrv := NewAuthServer(iSrv)
+	// token, err := validateUser(ctx, iSrv, authSrv)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// ctx = metadata.AppendToOutgoingContext(ctx, "authorization", token)
+	// // if _, ok := metadata.FromIncomingContext(ctx); !ok {
+	// // 	return nil, status.Errorf(codes.Unauthenticated, "metadata is not added!")
+	// // }
+
 	return &TestConfig{
-		Server: NewMovieServer(&TestAuthSrv),
+		Server: NewMovieServer(authSrv),
 		URL:    "/v1/movies",
 		Body: &moviepb.Movie{
 			Name:    "Movie_test",
@@ -71,7 +89,7 @@ func generateMoviesConfig() *TestConfig {
 			Cast:    []string{"Cast_test1", "Cast_test2"},
 			Tags:    []moviepb.Tag{moviepb.Tag_Adventure, moviepb.Tag_Fantasy},
 		},
-	}
+	}, nil
 }
 
 func updateMoviesConfig(config *TestConfig) {
@@ -86,12 +104,12 @@ func updateMoviesConfig(config *TestConfig) {
 	}
 }
 
-func testGetMovieById(ctx context.Context, objID string, config *TestConfig) error {
+func testGetMovieById(objID string, config *TestConfig) error {
 
 	// Convert srv from interface to server
 	srv := config.Server.(*movieServer)
 
-	resp, err := srv.GetMovie(ctx, &moviepb.GetMovieRequest{Id: objID})
+	resp, err := srv.GetMovie(config.Context, &moviepb.GetMovieRequest{Id: objID})
 	if err != nil {
 		return err
 	}
@@ -111,13 +129,13 @@ func testGetMovieById(ctx context.Context, objID string, config *TestConfig) err
 	return nil
 }
 
-func testPostMovie(ctx context.Context, config *TestConfig) (string, error) {
+func testPostMovie(config *TestConfig) (string, error) {
 
 	// Convert srv from interface to server
 	srv := config.Server.(*movieServer)
 	mvObj := config.Body.(*moviepb.Movie)
 
-	resp, err := srv.CreateMovie(ctx, &moviepb.CreateMovieRequest{Movie: mvObj})
+	resp, err := srv.CreateMovie(config.Context, &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
 		return "", err
 	}
@@ -131,13 +149,13 @@ func testPostMovie(ctx context.Context, config *TestConfig) (string, error) {
 	return id, nil
 }
 
-func testPutMovieById(ctx context.Context, objectId string, config *TestConfig) (string, error) {
+func testPutMovieById(objectId string, config *TestConfig) (string, error) {
 
 	// Convert srv from interface to server
 	srv := config.Server.(*movieServer)
 	mvObject := config.Body.(*moviepb.Movie)
 
-	resp, err := srv.UpdateMovie(ctx, &moviepb.UpdateMovieRequest{Id: objectId, Movie: mvObject})
+	resp, err := srv.UpdateMovie(config.Context, &moviepb.UpdateMovieRequest{Id: objectId, Movie: mvObject})
 	if err != nil {
 		return "", err
 	}
@@ -149,12 +167,12 @@ func testPutMovieById(ctx context.Context, objectId string, config *TestConfig) 
 	return resp.GetId(), nil
 }
 
-func testDeleteMovieById(ctx context.Context, objectId string, config *TestConfig) error {
+func testDeleteMovieById(objectId string, config *TestConfig) error {
 
 	// Convert srv from interface to server
 	srv := config.Server.(*movieServer)
 
-	resp, err := srv.DeleteMovie(ctx, &moviepb.DeleteMovieRequest{Id: objectId})
+	resp, err := srv.DeleteMovie(config.Context, &moviepb.DeleteMovieRequest{Id: objectId})
 	if err != nil {
 		return err
 	}

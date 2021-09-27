@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
@@ -50,6 +51,7 @@ func (jm *JWTManager) GenerateToken(user *identitypb.User) (string, error) {
 }
 
 func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) {
+	accessToken = strings.TrimPrefix(accessToken, "Basic ")
 	token, err := jwt.ParseWithClaims(
 		accessToken,
 		&UserClaims{},
@@ -62,7 +64,6 @@ func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) 
 			return []byte(jm.secretKey), nil
 		},
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("Invalid token! %v", err)
 	}
@@ -72,7 +73,6 @@ func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) 
 		return nil, fmt.Errorf("Invalid token claims!")
 	}
 	return claims, nil
-
 }
 
 // Verify verifies the access token string and return a user claim if the token is valid

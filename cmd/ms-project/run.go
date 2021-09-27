@@ -18,7 +18,7 @@ func init() {
 			srvs := &Servers{}
 			backend := createBackends()
 			srvs.Backend = backend
-			srvs.InitiateServers("", config, backend)
+			srvs.initiateServers("", config, backend)
 		},
 	}
 

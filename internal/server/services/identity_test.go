@@ -15,7 +15,8 @@ func TestIdentityService(t *testing.T) {
 	defer cancel()
 
 	// Create some basic configuration for testing
-	conf := generateIdentityConfig()
+	identitySrv := NewIdentityServer()
+	conf := generateIdentityConfig(identitySrv)
 	// Apply POST call testing and get ID in case of success
 	objectId, err := testPostUser(ctx, conf)
 	if err != nil {
@@ -59,14 +60,16 @@ func TestIdentityService(t *testing.T) {
 	}
 }
 
-func generateIdentityConfig() *TestConfig {
+func generateIdentityConfig(srv *identityServer) *TestConfig {
 	return &TestConfig{
-		Server: NewIdentityServer(),
+		Server: srv,
 		URL:    "/v1/users",
 		Body: &identitypb.User{
 			Username:  "usrname1",
 			Email:     "somemail98@domain.com",
+			Role:      identitypb.Role_ADMIN,
 			FirstName: "Alice",
+			Password:  "abcdef",
 		},
 	}
 }
@@ -76,6 +79,8 @@ func updateIdentityConfig(config *TestConfig) {
 		Username:  "usrname2",
 		Email:     "updatedmail98@domain.com",
 		FirstName: "John",
+		Role:      identitypb.Role_NORMAL,
+		Password:  "abcdef123",
 	}
 }
 

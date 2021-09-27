@@ -16,8 +16,9 @@ import (
 // NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer() *identityServer {
 	return &identityServer{
-		token: server.NewTokenGenerator(),
-		keys:  map[string]int{},
+		token:       server.NewTokenGenerator(),
+		keys:        map[string]int{},
+		userEntries: []userEntry{},
 	}
 }
 
@@ -84,8 +85,8 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 		index := len(is.userEntries)
 		is.userEntries = append(is.userEntries, userEntry{user: user, active: true})
 		is.keys[user.GetUsername()] = index
-
 	}
+	log.Println("End of CreateUser!")
 
 	return &identitypb.CreateUserResponse{Username: uname}, nil
 }
@@ -97,7 +98,8 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	defer is.mu.Unlock()
 
 	uname := req.GetUsername()
-
+	log.Println("Keys: ", is.keys)
+	log.Println("User Entries: ", is.userEntries)
 	// Check if Object exists or not
 	// codes.NotFound
 	if obj, ok := is.keys[uname]; ok {
@@ -108,7 +110,7 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	}
 
 	return nil, status.Errorf(
-		codes.NotFound, "A user with username %s not found!",
+		codes.NotFound, "A user with username `%s` not found!",
 		uname)
 }
 

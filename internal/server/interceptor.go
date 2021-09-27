@@ -35,24 +35,24 @@ func (interceptor *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 	}
 }
 
-// // Stream returns a server interceptor function to authenticate and authorize stream RPC
-// func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
-// 	return func(
-// 		srv interface{},
-// 		stream grpc.ServerStream,
-// 		info *grpc.StreamServerInfo,
-// 		handler grpc.StreamHandler,
-// 	) error {
-// 		log.Println("--> stream interceptor: ", info.FullMethod)
+// Stream returns a server interceptor function to authenticate and authorize stream RPC
+func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
+	return func(
+		srv interface{},
+		stream grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler,
+	) error {
+		log.Println("--> stream interceptor: ", info.FullMethod)
 
-// 		err := interceptor.authorize(stream.Context(), info.FullMethod)
-// 		if err != nil {
-// 			return err
-// 		}
+		err := interceptor.authorize(stream.Context(), info.FullMethod)
+		if err != nil {
+			return err
+		}
 
-// 		return handler(srv, stream)
-// 	}
-// }
+		return handler(srv, stream)
+	}
+}
 
 func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string) error {
 

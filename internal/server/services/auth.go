@@ -33,19 +33,15 @@ func NewAuthServer(is *identityServer) *authServer {
 // Login is a unary RPC to login user
 func (as *authServer) Login(ctx context.Context, req *authpb.LoginRequest) (*authpb.LoginResponse, error) {
 
-	log.Println("Login start!")
+	log.Println("Beginning of Login! ", req)
 	user, err := as.identityStore.GetUser(ctx, &identitypb.GetUserRequest{Username: req.GetUsername()})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "cannot find user: %v", err)
 	}
 
-	log.Println("Trying to match Password!")
-
 	if user == nil || !server.DoesPasswordMatch(req.GetPassword(), user.GetPassword()) {
 		return nil, status.Errorf(codes.NotFound, "incorrect username/password")
 	}
-
-	log.Println("Generating token!")
 
 	token, err := as.JWT.GenerateToken(user)
 	if err != nil {
