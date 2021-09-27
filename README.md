@@ -33,6 +33,7 @@
     *IN PROGRESS*
 1. **Documentation**
 
+    Visit https://akashgit21.github.io/ms-template/docs for viewing the documentation of Services.
     Documentation will be updated as per the modifications and changes in business logic. Also, the documentation is auto-generated. Hence, less focus may be there in some scenarios.
 1. **Pagination** 
     
