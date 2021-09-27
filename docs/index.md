@@ -1,6 +1,6 @@
 # MS-Template API
 
 ## Services
-   * [Auth Service](./auth.swagger.json)
-   * [Identity Service](./identity.swagger.json)
-   * [Movie Service](./movie.swagger.json)
+   * [Auth Service](https://app.swaggerhub.com/apis-docs/AkashGit21/AuthService/0.1)
+   * [Identity Service](https://app.swaggerhub.com/apis-docs/AkashGit21/IdentityService/0.1)
+   * [Movie Service](https://app.swaggerhub.com/apis-docs/AkashGit21/MovieService/0.1)
