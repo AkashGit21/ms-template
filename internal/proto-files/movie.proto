@@ -11,7 +11,7 @@ import "google/protobuf/empty.proto";
 // Service defined to manage Movie related activities and data
 service MovieService {
 
-  // Fetches the movie with given ID
+  // Lists all the movies
   rpc ListMovies(ListMoviesRequest) returns (ListMoviesResponse) {
     option (google.api.http) = {
       get: "/v1/movies"
@@ -25,7 +25,7 @@ service MovieService {
     };
   }
 
-  // Creates the movie with provided values
+  // Inserts the movie with provided values, and returns the generated ID for movie
   rpc CreateMovie(CreateMovieRequest) returns (CreateMovieResponse) {
     option (google.api.http) = {
       post: "/v1/movies"

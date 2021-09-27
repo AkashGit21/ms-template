@@ -26,11 +26,13 @@ clean:
 	rm -f $(BINARY_NAME)
 
 
-.PHONY: docker-run
-docker-run:
+.PHONY: docker-build
+docker-build:
 	echo -e "\nBuilding docker Image... \n\nThis may take a few minutes!\n"
 	docker build -t ms-template .
 
+.PHONY: docker-run
+docker-run:
 	echo -e "\n\nRunning the container..."
 	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp --name ms-server ms-template
 	echo -e "\n\nContainer is running successfully in the background! "
@@ -42,8 +44,9 @@ docker-stop:
 
 .PHONY: gen
 gen:
-	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=:swagger --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
-
+	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=./docs --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
+	cp docs/internal/proto-files/*.json docs/
+	rm -rf docs/internal
 
 .PHONY: help
 help:

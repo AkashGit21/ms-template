@@ -19,11 +19,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MovieServiceClient interface {
-	// Fetches the movie with given ID
+	// Lists all the movies
 	ListMovies(ctx context.Context, in *ListMoviesRequest, opts ...grpc.CallOption) (*ListMoviesResponse, error)
 	// Fetches the movie with given ID
 	GetMovie(ctx context.Context, in *GetMovieRequest, opts ...grpc.CallOption) (*Movie, error)
-	// Creates the movie with provided values
+	// Inserts the movie with provided values, and returns the generated ID for movie
 	CreateMovie(ctx context.Context, in *CreateMovieRequest, opts ...grpc.CallOption) (*CreateMovieResponse, error)
 	// Update an already present Movie with new values
 	UpdateMovie(ctx context.Context, in *UpdateMovieRequest, opts ...grpc.CallOption) (*UpdateMovieResponse, error)
@@ -99,11 +99,11 @@ func (c *movieServiceClient) DeleteMovie(ctx context.Context, in *DeleteMovieReq
 // All implementations must embed UnimplementedMovieServiceServer
 // for forward compatibility
 type MovieServiceServer interface {
-	// Fetches the movie with given ID
+	// Lists all the movies
 	ListMovies(context.Context, *ListMoviesRequest) (*ListMoviesResponse, error)
 	// Fetches the movie with given ID
 	GetMovie(context.Context, *GetMovieRequest) (*Movie, error)
-	// Creates the movie with provided values
+	// Inserts the movie with provided values, and returns the generated ID for movie
 	CreateMovie(context.Context, *CreateMovieRequest) (*CreateMovieResponse, error)
 	// Update an already present Movie with new values
 	UpdateMovie(context.Context, *UpdateMovieRequest) (*UpdateMovieResponse, error)

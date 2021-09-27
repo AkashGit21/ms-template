@@ -67,14 +67,28 @@ The ms-template can be installed by building your local Docker image or simply b
 
 ### Docker
 The pre-requisite for this step is the requirement of Docker installed locally. Hence, install Docker if not already installed.
-Then, run the following command:
-  ```sh
-  make docker-run
-  ```
+
+#### Steps
+
+1. Clone the repository to your desired location.
+    ```sh
+    git clone github.com/AkashGit21/ms-template
+    ```
+
+1. Now, lets build the Docker image locally using:
+    ```sh
+    make docker-build
+    ```
+
+1. Then, to run the container use:
+    ```sh
+    make docker-run
+    ```
+Now, you should be able to access the REST API at `localhost:8081` and gRPC API at `localhost:8082`.
 
 This will first build a docker image locally. Please keep calm as the process may take a few minutes. Then, it goes on to run the image in a container (in the background) and you shoul be able to check the container named `ms-server` using  ```docker ps```. 
 
-To stop the container, run:
+To stop the container, use:
   ```sh 
   make docker-stop
   ```

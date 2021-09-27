@@ -18,7 +18,7 @@
   "paths": {
     "/v1/movies": {
       "get": {
-        "summary": "Fetches the movie with given ID",
+        "summary": "Lists all the movies",
         "operationId": "MovieService_ListMovies",
         "responses": {
           "200": {
@@ -56,7 +56,7 @@
         ]
       },
       "post": {
-        "summary": "Creates the movie with provided values",
+        "summary": "Inserts the movie with provided values, and returns the generated ID for movie",
         "operationId": "MovieService_CreateMovie",
         "responses": {
           "200": {

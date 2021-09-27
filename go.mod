@@ -8,7 +8,6 @@ require (
 	github.com/google/uuid v1.2.0
 	github.com/googleapis/grpc-fallback-go v0.1.4
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.6.0
-	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.2.1
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
