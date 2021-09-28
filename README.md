@@ -33,8 +33,13 @@
     *IN PROGRESS*
 1. **Documentation**
 
-    Visit https://akashgit21.github.io/ms-template/docs for viewing the documentation of Services.
+    Visit [here](https://akashgit21.github.io/ms-template/docs) to view the documentation of Services.
     Documentation will be updated as per the modifications and changes in business logic. Also, the documentation is auto-generated. Hence, less focus may be there in some scenarios.
+
+1. **Rate Limiting**
+
+    The middleware to rate limit requests has been applied. By default, it is 2requests/min. To modify the limit, update `RefreshDuration` and `QueriesPerInterval` in this [file](./internal/server/interceptors/rate_limit.go).
+
 1. **Pagination** 
     
     The concept of pagination has been supported for List calls such as ```GET v1/movies```.     
@@ -67,7 +72,7 @@
 The ms-template can be installed by building your local Docker image or simply by installing form source using Go.
 
 ### Docker
-The pre-requisite for this step is the requirement of Docker installed locally. Hence, install Docker if not already installed.
+The pre-requisite for this process is the requirement of Docker (to be installed locally). Hence, install Docker if not already installed.
 
 #### Steps
 

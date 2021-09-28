@@ -31,7 +31,9 @@ type queryLimiter struct {
 
 func NewRateLimiter() *queryLimiter {
 	return &queryLimiter{
+		endTime:         time.Now().Add(RefreshDuration),
 		refreshInterval: RefreshDuration,
+		requests:        0,
 		queriesAllowed:  QueriesPerInterval,
 	}
 }
@@ -41,7 +43,8 @@ func (lim *queryLimiter) DidLimitExceed() bool {
 
 	if lim != nil {
 		// Check for Limiter endTime is still correct or not
-		if lim.endTime.Before(now) {
+		if !lim.endTime.Before(now) {
+			log.Printf("Inside before time!")
 			// Check if number of requests are greater than expected
 			if lim.requests >= lim.queriesAllowed {
 				return true
@@ -60,8 +63,10 @@ func (lim *queryLimiter) DidLimitExceed() bool {
 }
 
 func refreshLimiter(l *queryLimiter) {
+	log.Println("Inside Refresh Limiter!")
 	l.endTime = time.Now().Add(l.refreshInterval)
 	l.requests = 1
+	log.Printf("Endtime: %v Request:%v", l.endTime, l.requests)
 }
 
 // UnaryRateLimiter returns a new unary server interceptors that manages Rate-limiting of requests.

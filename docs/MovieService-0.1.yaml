@@ -1,0 +1,288 @@
+---
+swagger: "2.0"
+info:
+  version: "0.1"
+  title: internal/proto-files/movie.proto
+tags:
+- name: MovieService
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /v1/movies:
+    get:
+      tags:
+      - MovieService
+      summary: Lists all the movies
+      operationId: MovieService_ListMovies
+      parameters:
+      - name: pageToken
+        in: query
+        description: The page_token for that page to be uniquely identified.
+        required: false
+        type: string
+      - name: pageSize
+        in: query
+        description: |-
+          The maximum number of objects to return. Server may return fewer objects
+          than requested. If unspecified, server will pick an appropriate default.
+        required: false
+        type: integer
+        format: int32
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/movieListMoviesResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    post:
+      tags:
+      - MovieService
+      summary: Inserts the movie with provided values, and returns the generated ID for movie
+      operationId: MovieService_CreateMovie
+      parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/movieMovie'
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/movieCreateMovieResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+  /v1/movies/{id}:
+    get:
+      tags:
+      - MovieService
+      summary: Fetches the movie with given ID
+      operationId: MovieService_GetMovie
+      parameters:
+      - name: id
+        in: path
+        description: Required. The unique ID of movie
+        required: true
+        type: string
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/movieMovie'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    put:
+      tags:
+      - MovieService
+      summary: Update an already present Movie with new values
+      operationId: MovieService_UpdateMovie
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/movieMovie'
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/movieUpdateMovieResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    delete:
+      tags:
+      - MovieService
+      summary: Delete an existing Record with given ID
+      operationId: MovieService_DeleteMovie
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      responses:
+        "200":
+          description: A successful response.
+          schema: {}
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    patch:
+      tags:
+      - MovieService
+      summary: Update an already present Movie with new values
+      operationId: MovieService_PartialUpdateMovie
+      parameters:
+      - name: id
+        in: path
+        description: Unique ID for the Movie
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/body'
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/moviePartialUpdateMovieResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+definitions:
+  movieCreateMovieResponse:
+    type: object
+    properties:
+      id:
+        type: string
+    description: |-
+      The response message for the movie.MovieService\CreateMovie
+      method.
+  movieListMoviesResponse:
+    type: object
+    properties:
+      movies:
+        type: array
+        items:
+          $ref: '#/definitions/movieMovie'
+      nextPageToken:
+        type: string
+    description: |-
+      The request message for the movie.MovieService\ListMovies
+      method.
+  movieMovie:
+    type: object
+    required:
+    - name
+    - tags
+    properties:
+      id:
+        type: string
+        title: Output only. The Unique ID for the Movie
+        readOnly: true
+      name:
+        type: string
+        title: Required. Name of the Movie
+      summary:
+        type: string
+        title: Brief summary of the Movie
+      cast:
+        type: array
+        title: Group of actors who make up a Film or stage play
+        items:
+          type: string
+      tags:
+        type: array
+        title: Required. Tags related to the Movie
+        items:
+          $ref: '#/definitions/movieTag'
+      director:
+        type: string
+        title: Director of film
+      writers:
+        type: array
+        title: The author(s) of film
+        items:
+          type: string
+    title: The movie
+  moviePartialUpdateMovieResponse:
+    type: object
+    properties:
+      id:
+        type: string
+    description: |-
+      The response message for the movie.MovieService\PartialUpdateMovie
+      method.
+  movieTag:
+    type: string
+    title: Tags describing Movie characteristics
+    description: |-
+      - UNDEFINED_TAG: Default tag
+       - Action: Action tag
+       - Adventure: Adventure tag
+       - Fantasy: Fantasy tag
+       - Comedy: Comedy tag
+    enum:
+    - UNDEFINED_TAG
+    - Action
+    - Adventure
+    - Fantasy
+    - Comedy
+    default: UNDEFINED_TAG
+  movieUpdateMovieResponse:
+    type: object
+    properties:
+      id:
+        type: string
+    description: |-
+      The response message for the movie.MovieService\UpdateMovie
+      method.
+  protobufAny:
+    type: object
+    properties:
+      typeUrl:
+        type: string
+      value:
+        type: string
+        format: byte
+        pattern: ^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          $ref: '#/definitions/protobufAny'
+  body:
+    type: object
+    required:
+    - summary
+    - tags
+    properties:
+      summary:
+        type: string
+        title: Brief summary of the Movie
+      cast:
+        type: array
+        title: Group of actors who make up a Film or stage play
+        items:
+          type: string
+      tags:
+        type: array
+        title: Tags related to the Movie
+        items:
+          $ref: '#/definitions/movieTag'
+      director:
+        type: string
+        title: Director of film
+      writers:
+        type: array
+        title: The author(s) of film
+        items:
+          type: string
+    description: |-
+      The request message for the movie.MovieService\PartialUpdateMovie
+      method.
