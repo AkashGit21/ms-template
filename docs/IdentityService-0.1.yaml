@@ -1,0 +1,256 @@
+---
+swagger: "2.0"
+info:
+  version: "0.1"
+  title: internal/proto-files/identity.proto
+tags:
+- name: IdentityService
+consumes:
+- application/json
+produces:
+- application/json
+paths:
+  /v1/users:
+    get:
+      tags:
+      - IdentityService
+      summary: Lists all users.
+      operationId: IdentityService_ListUsers
+      parameters:
+      - name: pageSize
+        in: query
+        description: |-
+          The maximum number of users to return. Server may return fewer users
+          than requested. If unspecified, server will pick an appropriate default.
+        required: false
+        type: integer
+        format: int32
+      - name: pageToken
+        in: query
+        description: |-
+          The value of google.showcase.v1.ListUsersResponse.next_page_token
+          returned from the previous call to
+          `google.showcase.v1.Identity\ListUsers` method.
+        required: false
+        type: string
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/identityListUsersResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    post:
+      tags:
+      - IdentityService
+      summary: Creates a user.
+      operationId: IdentityService_CreateUser
+      parameters:
+      - in: body
+        name: body
+        description: The user to create.
+        required: true
+        schema:
+          $ref: '#/definitions/identityUser'
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/identityCreateUserResponse'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+  /v1/users/{username}:
+    get:
+      tags:
+      - IdentityService
+      summary: Retrieves the User with the given uri.
+      operationId: IdentityService_GetUser
+      parameters:
+      - name: username
+        in: path
+        description: The resource name of the requested user.
+        required: true
+        type: string
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/identityUser'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    delete:
+      tags:
+      - IdentityService
+      summary: Deletes a user, and their profile.
+      operationId: IdentityService_DeleteUser
+      parameters:
+      - name: username
+        in: path
+        description: The resource name of the user to delete.
+        required: true
+        type: string
+      responses:
+        "200":
+          description: A successful response.
+          schema: {}
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+    patch:
+      tags:
+      - IdentityService
+      summary: Updates a user.
+      operationId: IdentityService_UpdateUser
+      parameters:
+      - name: username
+        in: path
+        description: The id of user to be updated
+        required: true
+        type: string
+      - in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/body'
+      responses:
+        "200":
+          description: A successful response.
+          schema:
+            $ref: '#/definitions/identityUser'
+        default:
+          description: An unexpected error response.
+          schema:
+            $ref: '#/definitions/rpcStatus'
+definitions:
+  identityCreateUserResponse:
+    type: object
+    properties:
+      username:
+        type: string
+    description: |-
+      The response message for the identity.Identity\CreateUser
+      method.
+  identityListUsersResponse:
+    type: object
+    properties:
+      users:
+        type: array
+        description: The list of users.
+        items:
+          $ref: '#/definitions/identityUser'
+      nextPageToken:
+        type: string
+        description: |-
+          A token to retrieve next page of results.
+          Pass this value in ListUsersRequest.page_token field in the subsequent
+          call to `google.showcase.v1.Message\ListUsers` method to retrieve the
+          next page of results.
+    description: |-
+      The response message for the identity.Identity\ListUsers
+      method.
+  identityRole:
+    type: string
+    title: The roles available for users
+    description: |-
+      - GUEST: Every User has this role by default
+       - NORMAL: Logged in user but with no special fees
+       - SUBSCRIBED: Logged in user who has subscribed to service
+       - ADMIN: For Developers or Maintainers of the service
+    enum:
+    - GUEST
+    - NORMAL
+    - SUBSCRIBED
+    - ADMIN
+    default: GUEST
+  identityUser:
+    type: object
+    required:
+    - email
+    - password
+    - username
+    properties:
+      username:
+        type: string
+        description: Required. The username of the user. Must be unique and length should be between 6 to 30 characters.
+      email:
+        type: string
+        title: Required. The email address of the user. Must be unique
+      password:
+        type: string
+        title: Required. The encoded password of the user
+      role:
+        description: Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest.
+        $ref: '#/definitions/identityRole'
+      firstName:
+        type: string
+        title: 'The first name of user. For example: ''Harry'''
+      lastName:
+        type: string
+        title: 'The last name of user. For example: ''Potter'''
+      createTime:
+        type: string
+        format: date-time
+        description: Output only. The timestamp at which the user was created.
+        readOnly: true
+      updateTime:
+        type: string
+        format: date-time
+        description: Output only. The latest timestamp at which the user was updated.
+        readOnly: true
+      age:
+        type: integer
+        format: int32
+        description: The age of the user in years.
+      heightFeet:
+        type: number
+        format: double
+        description: The height of the user in feet.
+      nickname:
+        type: string
+        description: The nickname of the user.
+      enableNotifications:
+        type: boolean
+        description: Enables the receiving of notifications. The default is false if unset.
+    description: A user.
+  protobufAny:
+    type: object
+    properties:
+      typeUrl:
+        type: string
+      value:
+        type: string
+        format: byte
+        pattern: ^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$
+  rpcStatus:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
+      details:
+        type: array
+        items:
+          $ref: '#/definitions/protobufAny'
+  body:
+    type: object
+    properties:
+      user:
+        description: // The user to update.
+        $ref: '#/definitions/identityUser'
+      updateMask:
+        type: string
+        description: |-
+          The field mask to determine which fields are to be updated. If empty, the
+          server will assume all fields are to be updated.
+    description: |-
+      The request message for the identity.Identity\UpdateUser
+      method.

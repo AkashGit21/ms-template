@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   version: "0.1"
-  title: internal/proto-files/movie.proto
+  title: MS-Template
 tags:
 - name: MovieService
 consumes:
