@@ -2,7 +2,7 @@
 swagger: "2.0"
 info:
   version: "0.1"
-  title: internal/proto-files/auth.proto
+  title: MS-Template
 tags:
 - name: AuthService
 consumes:

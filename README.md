@@ -33,7 +33,8 @@
     *IN PROGRESS*
 1. **Documentation**
 
-    Visit [here](https://akashgit21.github.io/ms-template/docs) to view the documentation of Services.
+    Visit [here](https://akashgit21.github.io/ms-template/docs) to view the documentation of Services. Search for the service you like to explore (e.g: IdentityService-0.1.yaml, AuthService-0.1.yaml, or MovieService-0.1.yaml )
+
     Documentation will be updated as per the modifications and changes in business logic. Also, the documentation is auto-generated. Hence, less focus may be there in some scenarios.
 
 1. **Rate Limiting**

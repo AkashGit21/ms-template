@@ -44,9 +44,9 @@ docker-stop:
 
 .PHONY: gen
 gen:
-	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=./docs --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
-	cp docs/internal/proto-files/*.json docs/
-	rm -rf docs/internal
+	protoc --go_out=. --go-grpc_out=. --grpc-gateway_out=. --openapiv2_out=./docs/swagger --proto_path=. internal/proto-files/*.proto --experimental_allow_proto3_optional
+	cp docs/swagger/internal/proto-files/*.json docs/swagger/
+	rm -rf docs/swagger/internal
 
 .PHONY: help
 help:
