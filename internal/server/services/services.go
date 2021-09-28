@@ -7,6 +7,7 @@ import (
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/AkashGit21/ms-project/internal/server/interceptors"
 )
 
 // Backend contains the various service backends that will be
@@ -17,7 +18,7 @@ type Backend struct {
 	IdentityServer identitypb.IdentityServiceServer
 	AuthServer     authpb.AuthServiceServer
 
-	Interceptor *server.AuthInterceptor
+	AuthInterceptor *interceptors.AuthInterceptor
 
 	// Supporting protos
 

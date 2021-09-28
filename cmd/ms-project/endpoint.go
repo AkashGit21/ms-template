@@ -18,6 +18,7 @@ import (
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/AkashGit21/ms-project/internal/server/interceptors"
 	"github.com/AkashGit21/ms-project/internal/server/services"
 	fallback "github.com/googleapis/grpc-fallback-go/server"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -47,18 +48,18 @@ func accessRoles() map[string][]string {
 	return map[string][]string{
 
 		// Roles for IdentityService
-		identityServicePath + "ListUsers": {"ADMIN"},
-		// identityServicePath + "GetUser":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
-		// identityServicePath + "CreateUser": {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		identityServicePath + "ListUsers":  {"ADMIN"},
+		identityServicePath + "GetUser":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		identityServicePath + "CreateUser": {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
 		identityServicePath + "UpdateUser": {"ADMIN", "NORMAL", "SUBSCRIBED"},
 		identityServicePath + "DeleteUser": {"ADMIN", "NORMAL", "SUBSCRIBED"},
 
 		// Roles for AuthService
-		// authServicePath + "Login": {"GUEST"},
+		authServicePath + "Login": {"GUEST"},
 
 		// Roles for MovieService
-		// movieServicePath + "ListMovies":  {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
-		// movieServicePath + "GetMovie":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		movieServicePath + "ListMovies":  {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
+		movieServicePath + "GetMovie":    {"ADMIN", "GUEST", "NORMAL", "SUBSCRIBED"},
 		movieServicePath + "CreateMovie": {"ADMIN", "SUBSCRIBED"},
 		movieServicePath + "UpdateMovie": {"ADMIN", "SUBSCRIBED"},
 		movieServicePath + "DeleteMovie": {"ADMIN", "SUBSCRIBED"},
@@ -72,9 +73,8 @@ func createBackends() *services.Backend {
 	authSrv := services.NewAuthServer(identitySrv)
 	movieSrv := services.NewMovieServer(authSrv)
 
-	jm := server.NewJWTManager(services.SecretKey, 5*time.Minute)
-	authSrv.JWT = jm
-	authI := server.NewAuthInterceptor(jm, accessRoles())
+	authSrv.JWT = server.NewJWTManager(services.SecretKey, 5*time.Minute)
+	authI := interceptors.NewAuthInterceptor(authSrv.JWT, accessRoles())
 
 	logger := &loggerObserver{}
 	observerRegistry := server.ShowcaseObserverRegistry()
@@ -83,10 +83,10 @@ func createBackends() *services.Backend {
 	observerRegistry.RegisterStreamResponseObserver(logger)
 
 	return &services.Backend{
-		IdentityServer: identitySrv,
-		AuthServer:     authSrv,
-		MovieServer:    movieSrv,
-		Interceptor:    authI,
+		IdentityServer:  identitySrv,
+		AuthServer:      authSrv,
+		MovieServer:     movieSrv,
+		AuthInterceptor: authI,
 
 		StdLog: stdLog,
 		ErrLog: errLog,
@@ -168,10 +168,11 @@ func (s *Servers) initiateGRPCServer(endpoint string, config RuntimeConfig) erro
 	s.gRPCListener = ln
 
 	opts := []grpc.ServerOption{
-		grpc.ChainUnaryInterceptor(
-			s.Backend.Interceptor.Unary(),
-			s.Backend.ObserverRegistry.UnaryInterceptor,
-		),
+		s.getUnaryInterceptors(),
+		// grpc.ChainUnaryInterceptor(
+		// 	s.Backend.AuthInterceptor.Unary(),
+		// 	s.Backend.ObserverRegistry.UnaryInterceptor,
+		// ),
 		// MaxConnectionAge is just to avoid long connection, to facilitate load balancing
 		// MaxConnectionAgeGrace will torn them, default to infinity
 		grpc.KeepaliveParams(keepalive.ServerParameters{MaxConnectionAge: 2 * time.Minute}),
@@ -276,4 +277,15 @@ func (s *Servers) registerHTTPService(endpoint string, mux *runtime.ServeMux) er
 		return err
 	}
 	return nil
+}
+
+func (s *Servers) getUnaryInterceptors() grpc.ServerOption {
+
+	rateLimit := interceptors.NewRateLimiter()
+
+	return grpc.ChainUnaryInterceptor(
+		rateLimit.UnaryRateLimiter(rateLimit),
+		s.Backend.AuthInterceptor.Unary(),
+		s.Backend.ObserverRegistry.UnaryInterceptor,
+	)
 }
