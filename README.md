@@ -1,5 +1,7 @@
 # ms-template
 
+This repository tries to include most of the boilerplate code needed to develop gRPC APIs using Go and gRPC. Some of the important features are: REST/HTTP gateway(developed usig grpc-gateway), Logging, Authentication/Authorization, Rate Limiting, etc.
+
 ## Features
 1. **gRPC API** alongwith the **REST/HTTP API** built using grpc-gateway.
 2. **Services** 

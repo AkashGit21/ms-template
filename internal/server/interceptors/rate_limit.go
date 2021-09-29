@@ -11,7 +11,9 @@ import (
 )
 
 var (
-	RefreshDuration    = 1 * time.Minute
+	// Global Refresh duration (time period) for particular interval
+	RefreshDuration = 1 * time.Minute
+	// Max. number of Queries allowed during the Interval
 	QueriesPerInterval = 2
 )
 
@@ -44,7 +46,6 @@ func (lim *queryLimiter) DidLimitExceed() bool {
 	if lim != nil {
 		// Check for Limiter endTime is still correct or not
 		if !lim.endTime.Before(now) {
-			log.Printf("Inside before time!")
 			// Check if number of requests are greater than expected
 			if lim.requests >= lim.queriesAllowed {
 				return true
@@ -63,18 +64,16 @@ func (lim *queryLimiter) DidLimitExceed() bool {
 }
 
 func refreshLimiter(l *queryLimiter) {
-	log.Println("Inside Refresh Limiter!")
 	l.endTime = time.Now().Add(l.refreshInterval)
 	l.requests = 1
-	log.Printf("Endtime: %v Request:%v", l.endTime, l.requests)
 }
 
 // UnaryRateLimiter returns a new unary server interceptors that manages Rate-limiting of requests.
 func (l *queryLimiter) UnaryRateLimiter(limiter Limiter) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 
-		log.Println("--> limiter interceptor: ", info.FullMethod)
-		if ok := limiter.DidLimitExceed(); ok {
+		log.Println("--> rate_limit interceptor: ", info.FullMethod)
+		if limiter.DidLimitExceed() {
 			return nil, status.Errorf(codes.ResourceExhausted, "%s is rejected by the API. Please retry after a while.", info.FullMethod)
 		}
 		return handler(ctx, req)
@@ -84,6 +83,8 @@ func (l *queryLimiter) UnaryRateLimiter(limiter Limiter) grpc.UnaryServerInterce
 // StreamServerInterceptor returns a new stream server interceptor that manages Rate-limiting of requests.
 func (lim *queryLimiter) StreamRateLimiter(limiter Limiter) grpc.StreamServerInterceptor {
 	return func(srv interface{}, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+
+		log.Println("--> rate_limit interceptor: ", info.FullMethod)
 		if limiter.DidLimitExceed() {
 			return status.Errorf(codes.ResourceExhausted, "%s is rejected by the API. Please retry after a while.", info.FullMethod)
 		}

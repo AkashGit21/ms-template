@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package testing;
+option go_package = "internal/grpc/testing; testingpb";
+
+import "google/protobuf/empty.proto";
+
+message PingRequest {
+  string value = 1;
+  int32 sleep_time_ms = 2;
+  uint32 error_code_returned = 3;
+}
+
+message PingResponse {
+  string Value = 1;
+  int32 counter = 2;
+}
+
+service TestService {
+  rpc PingEmpty(google.protobuf.Empty) returns (PingResponse) {}
+
+  rpc Ping(PingRequest) returns (PingResponse) {}
+
+  rpc PingError(PingRequest) returns (google.protobuf.Empty) {}
+
+  rpc PingList(PingRequest) returns (stream PingResponse) {}
+
+  rpc PingStream(stream PingRequest) returns (stream PingResponse) {}
+
+}

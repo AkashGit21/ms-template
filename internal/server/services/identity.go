@@ -56,7 +56,7 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 	// codes.AlreadyExists
 
 	if _, ok := is.keys[user.GetUsername()]; ok {
-		return nil, status.Errorf(codes.AlreadyExists, "User Record with username: %v already exists!", user.GetUsername())
+		return nil, status.Errorf(codes.AlreadyExists, "A user with username `%s` already exists!", user.GetUsername())
 	} else {
 
 		uname = user.GetUsername()
@@ -98,8 +98,6 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	defer is.mu.Unlock()
 
 	uname := req.GetUsername()
-	log.Println("Keys: ", is.keys)
-	log.Println("User Entries: ", is.userEntries)
 	// Check if Object exists or not
 	// codes.NotFound
 	if obj, ok := is.keys[uname]; ok {
@@ -131,7 +129,7 @@ func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUs
 	if !ok {
 		return nil, status.Errorf(
 			codes.NotFound,
-			"A user with id %s not found.", req.GetUsername())
+			"A user with username `%s` not found.", req.GetUsername())
 	}
 
 	entry := is.userEntries[index]

@@ -46,7 +46,7 @@ func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 		info *grpc.StreamServerInfo,
 		handler grpc.StreamHandler,
 	) error {
-		log.Println("--> stream interceptor: ", info.FullMethod)
+		log.Println("--> auth interceptor: ", info.FullMethod)
 
 		err := interceptor.authorize(stream.Context(), info.FullMethod)
 		if err != nil {
@@ -61,7 +61,7 @@ func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string
 
 	accessibleRoles, ok := interceptor.accessibleRoles[method]
 	if !ok {
-		return fmt.Errorf("access role not defined for such action!")
+		return fmt.Errorf("unknown service!")
 	}
 	for _, role := range accessibleRoles {
 		if strings.EqualFold("GUEST", role) {
@@ -77,13 +77,14 @@ func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string
 
 	values := md["authorization"]
 	if len(values) == 0 {
-		return status.Errorf(codes.Unauthenticated, "authorization token is not provided")
+		return status.Errorf(codes.Unauthenticated, "authorization token is not provided!")
 	}
 
 	accessToken := values[0]
-	claims, err := interceptor.jwtManager.Verify(accessToken)
+	claims, err := interceptor.jwtManager.GetUserFromToken(accessToken)
 	if err != nil {
-		return status.Errorf(codes.Unauthenticated, "access token is invalid: %v", err)
+		log.Println("error: ", err.Error())
+		return status.Errorf(codes.Unauthenticated, "bad access token!")
 	}
 
 	for _, role := range accessibleRoles {
@@ -92,5 +93,5 @@ func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string
 		}
 	}
 
-	return status.Error(codes.PermissionDenied, "no permission to access this RPC")
+	return status.Error(codes.PermissionDenied, "not allowed to access this feature!")
 }

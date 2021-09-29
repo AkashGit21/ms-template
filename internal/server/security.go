@@ -77,6 +77,7 @@ func (jm *JWTManager) GetUserFromToken(accessToken string) (*UserClaims, error) 
 
 // Verify verifies the access token string and return a user claim if the token is valid
 func (jm *JWTManager) Verify(accessToken string) (*UserClaims, error) {
+	accessToken = strings.TrimPrefix(accessToken, "Basic ")
 	token, err := jwt.ParseWithClaims(
 		accessToken,
 		&UserClaims{},
