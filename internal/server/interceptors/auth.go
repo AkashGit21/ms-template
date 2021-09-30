@@ -2,7 +2,6 @@ package interceptors
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"strings"
 
@@ -52,7 +51,6 @@ func (interceptor *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 		if err != nil {
 			return err
 		}
-
 		return handler(srv, stream)
 	}
 }
@@ -61,18 +59,18 @@ func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string
 
 	accessibleRoles, ok := interceptor.accessibleRoles[method]
 	if !ok {
-		return fmt.Errorf("unknown service!")
+		return status.Errorf(codes.NotFound, "unknown service!")
 	}
+
 	for _, role := range accessibleRoles {
 		if strings.EqualFold("GUEST", role) {
 			// Guest is allowed here
 			return nil
 		}
 	}
-
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return status.Errorf(codes.Unauthenticated, "metadata is not provided")
+		return status.Errorf(codes.Unauthenticated, "metadata is not provided!")
 	}
 
 	values := md["authorization"]

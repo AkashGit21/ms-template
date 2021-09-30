@@ -22,8 +22,9 @@ import (
 var (
 	secretKey       = "secret"
 	mockAccessRoles = map[string][]string{
-		"/testing.TestService/PingEmpty": {"ADMIN", "SUBSCRIBED"},
-		"/testing.TestService/PingList":  {"ADMIN", "SUBSCRIBED"},
+		"/testing.TestService/PingEmpty":  {"ADMIN", "SUBSCRIBED"},
+		"/testing.TestService/PingList":   {"ADMIN", "SUBSCRIBED"},
+		"/testing.TestService/PingStream": {"ADMIN", "SUBSCRIBED"},
 	}
 
 	authToken   = "some_bad_token"
@@ -105,7 +106,7 @@ func (ms *TestInterceptorSuite) NewClient(dialOpts ...grpc.DialOption) testingpb
 }
 
 func (ms *TestInterceptorSuite) pingReqWithAuth(choice int, accessLevel int) (interface{}, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Add token to gRPC Request.
@@ -136,6 +137,29 @@ func addAuthToken(accessLevel int) string {
 	}
 
 	return token
+}
+
+func TestUnary_BadService(t *testing.T) {
+
+	mockJWTmngr := server.NewJWTManager(secretKey, 2*time.Minute)
+	mockAuthPassInterceptor := NewAuthInterceptor(mockJWTmngr, mockAccessRoles)
+	opts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(mockAuthPassInterceptor.Unary()),
+	}
+
+	testSuite := TestInterceptorSuite{
+		T:          t,
+		ServerOpts: opts,
+		serverAddr: "127.0.0.1:8089",
+	}
+	testSuite.SetupSuite()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := testSuite.Client.Ping(ctx, pingReq)
+	assert.Nil(t, resp)
+	assert.EqualError(t, err, "rpc error: code = NotFound desc = unknown service!")
 }
 
 func TestUnary_NoAuth(t *testing.T) {
@@ -234,7 +258,7 @@ func TestStream_NoAuth(t *testing.T) {
 	}
 	testSuite.SetupSuite()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	stream, err := testSuite.Client.PingList(ctx, pingReq)
@@ -261,15 +285,80 @@ func TestStream_BadAuth(t *testing.T) {
 	}
 	testSuite.SetupSuite()
 
-	resp, err := testSuite.pingReqWithAuth(2, -1)
-	stream := resp.(testingpb.TestService_PingListClient)
-	// log.Println("Stream: ", stream)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 
+	// Add token to gRPC Request.
+	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", authToken)
+
+	stream, err := testSuite.Client.PingList(ctx, pingReq)
 	_, err = stream.Recv()
 	assert.Error(t, err, "there must be an error")
 	assert.Equal(t, codes.Unauthenticated, status.Code(err), "must error with unauthenticated")
 	assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = bad access token!")
 }
 
+func TestStream_BadAuthPermissionDenied(t *testing.T) {
+
+	mockJWTmngr := server.NewJWTManager(secretKey, 2*time.Minute)
+	mockAuthFailInterceptor := NewAuthInterceptor(mockJWTmngr, mockAccessRoles)
+
+	opts := []grpc.ServerOption{
+		grpc.StreamInterceptor(mockAuthFailInterceptor.Stream()),
+	}
+
+	testSuite := TestInterceptorSuite{
+		T:          t,
+		ServerOpts: opts,
+		serverAddr: "127.0.0.1:8087",
+	}
+	testSuite.SetupSuite()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Add token to gRPC Request.
+	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", addAuthToken(1))
+
+	stream, err := testSuite.Client.PingList(ctx, pingReq)
+	_, err = stream.Recv()
+	assert.Error(t, err, "there must be an error")
+	assert.Equal(t, codes.PermissionDenied, status.Code(err), "must error with unauthenticated")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = not allowed to access this feature!")
+}
+
 func TestStream_AuthPasses(t *testing.T) {
+
+	mockJWTmngr := server.NewJWTManager(secretKey, 2*time.Minute)
+	mockAuthFailInterceptor := NewAuthInterceptor(mockJWTmngr, mockAccessRoles)
+
+	opts := []grpc.ServerOption{
+		grpc.StreamInterceptor(mockAuthFailInterceptor.Stream()),
+	}
+
+	testSuite := TestInterceptorSuite{
+		T:          t,
+		ServerOpts: opts,
+		serverAddr: "127.0.0.1:8088",
+	}
+	testSuite.SetupSuite()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Add token to gRPC Request.
+	ctx = metadata.AppendToOutgoingContext(ctx, "authorization", addAuthToken(2))
+
+	streamReq := &testingpb.PingRequest{
+		ErrorCodeReturned: 0,
+		Value:             "stream_request",
+		SleepTimeMs:       10000,
+	}
+	stream, err := testSuite.Client.PingList(ctx, streamReq)
+	assert.NoError(t, err)
+	for ind := 0; ind < 100; ind++ {
+		resp, err := stream.Recv()
+		assert.Equal(t, ind, int(resp.Counter))
+		assert.NoError(t, err)
+	}
 }

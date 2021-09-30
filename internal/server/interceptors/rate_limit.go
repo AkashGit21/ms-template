@@ -59,7 +59,7 @@ func (lim *queryLimiter) DidLimitExceed() bool {
 		return false
 	} else {
 		log.Println("No rate limiter found!")
-		return false
+		return true
 	}
 }
 
