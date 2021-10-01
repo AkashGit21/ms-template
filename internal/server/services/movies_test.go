@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMoviesService(t *testing.T) {
@@ -64,6 +65,28 @@ func TestMoviesService(t *testing.T) {
 		t.Errorf("Record is not deleted. DELETE call failed!")
 		return
 	}
+}
+
+func TestCreateMovie_Created(t *testing.T) {
+
+	authSrv := NewAuthServer(NewIdentityServer())
+	TestMovieSrv = NewMovieServer(authSrv)
+
+	obj := &moviepb.CreateMovieRequest{
+		Movie: &moviepb.Movie{
+			Name:     "movie_test",
+			Summary:  "movie summary to be added",
+			Cast:     []string{"cast_test1", "cast_test2"},
+			Tags:     []moviepb.Tag{moviepb.Tag_Action, moviepb.Tag_Adventure},
+			Director: "director_test1",
+			Writers:  []string{"director_test1", "director_test2"},
+		},
+	}
+
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), obj)
+	assert.Nil(t, err)
+	log.Println("Response without error!")
+	assert.NotEmpty(t, resp)
 }
 
 func generateMoviesConfig(ctx context.Context) (*TestConfig, error) {

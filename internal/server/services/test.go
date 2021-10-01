@@ -3,9 +3,9 @@ package services
 import "context"
 
 var (
-	TestIdentitySrv identityServer
-	TestAuthSrv     authServer
-	TestMovieSrv    movieServer
+	TestIdentitySrv *identityServer
+	TestAuthSrv     *authServer
+	TestMovieSrv    *movieServer
 )
 
 type TestConfig struct {
