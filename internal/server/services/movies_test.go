@@ -2,218 +2,308 @@ package services
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"reflect"
 	"testing"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
-	"github.com/stretchr/testify/assert"
+	"github.com/golang/protobuf/ptypes/empty"
 )
 
-func TestMoviesService(t *testing.T) {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Create some basic configuration for testing
-	conf, err := generateMoviesConfig(ctx)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-
-	// Apply POST call testing and get ID in case of success
-	objectId, err := testPostMovie(conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	log.Println("POST Call Response is: ", objectId)
-	// Verify that the fields of Response and provided Configuration matches
-	err = testGetMovieById(objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-
-	// Update the configuration for further Testing
-	updateMoviesConfig(conf)
-	// Apply PUT call testing and get ID in case of success
-	objectId, err = testPutMovieById(objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	// Verify that the fields of Response and provided Configuration matches
-	err = testGetMovieById(objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-
-	// TODO: Unit Testing for PATCH call
-
-	// Apply DELETE call testing and get ID in case of success
-	err = testDeleteMovieById(objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	err = testGetMovieById(objectId, conf)
-	if err == nil {
-		t.Errorf("Record is not deleted. DELETE call failed!")
-		return
-	}
-}
-
-func TestCreateMovie_Created(t *testing.T) {
-
+func getMovieServer() *movieServer {
 	authSrv := NewAuthServer(NewIdentityServer())
-	TestMovieSrv = NewMovieServer(authSrv)
+	return NewMovieServer(authSrv)
+}
 
-	obj := &moviepb.CreateMovieRequest{
-		Movie: &moviepb.Movie{
-			Name:     "movie_test",
-			Summary:  "movie summary to be added",
-			Cast:     []string{"cast_test1", "cast_test2"},
-			Tags:     []moviepb.Tag{moviepb.Tag_Action, moviepb.Tag_Adventure},
-			Director: "director_test1",
-			Writers:  []string{"director_test1", "director_test2"},
+func TestCreateMovie(t *testing.T) {
+	TestMovieSrv = getMovieServer()
+
+	type testCase struct {
+		name        string
+		args        *moviepb.Movie
+		expected    string
+		expectedErr string
+	}
+
+	tests := []testCase{
+		{
+			name: "invalid ID error",
+			args: &moviepb.Movie{
+				Id:      "test_id",
+				Name:    "test_name",
+				Summary: "test_summary",
+				Cast:    []string{"test_cast1"},
+				Tags:    []moviepb.Tag{moviepb.Tag(0)},
+				Writers: []string{"test_writer1", "test_writer2"},
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = Input is not valid! ID is auto-generated...",
+		},
+		{
+			name: "invalid data error",
+			args: &moviepb.Movie{
+				Name:    " ",
+				Summary: "test_summary",
+				Cast:    []string{"test_cast1"},
+				Tags:    []moviepb.Tag{moviepb.Tag(0)},
+				Writers: []string{"test_writer1", "test_writer2"},
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = Input is not valid! The name should be between 1 and 120 characters.",
+		},
+		{
+			name: "created_movie",
+			args: &moviepb.Movie{
+				Name:    "test_create_movie",
+				Summary: "test_summary",
+				Cast:    []string{"test_cast1"},
+				Tags:    []moviepb.Tag{moviepb.Tag(0)},
+				Writers: []string{"test_writer1", "test_writer2"},
+			},
+			expected:    "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
+			expectedErr: "",
 		},
 	}
 
-	resp, err := TestMovieSrv.CreateMovie(context.Background(), obj)
-	assert.Nil(t, err)
-	log.Println("Response without error!")
-	assert.NotEmpty(t, resp)
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: tcase.args})
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if len(actual.GetId()) != len(tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", len(tcase.expected), len(actual.GetId()))
+			}
+		})
+	}
 }
 
-func generateMoviesConfig(ctx context.Context) (*TestConfig, error) {
+func TestGetMovie(t *testing.T) {
+	TestMovieSrv = getMovieServer()
 
-	iSrv := NewIdentityServer()
-	authSrv := NewAuthServer(iSrv)
-	// token, err := validateUser(ctx, iSrv, authSrv)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	type testCase struct {
+		name        string
+		args        string
+		expected    *moviepb.Movie
+		expectedErr string
+	}
 
-	// ctx = metadata.AppendToOutgoingContext(ctx, "authorization", token)
-	// // if _, ok := metadata.FromIncomingContext(ctx); !ok {
-	// // 	return nil, status.Errorf(codes.Unauthenticated, "metadata is not added!")
-	// // }
+	mvObj := &moviepb.Movie{
+		Name:    "test_get_movie",
+		Summary: "test_get_movie_summary",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+	if err != nil {
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	movieID := resp.GetId()
 
-	return &TestConfig{
-		Server: NewMovieServer(authSrv),
-		URL:    "/v1/movies",
-		Body: &moviepb.Movie{
-			Name:    "Movie_test",
-			Summary: "Some test summary!",
-			Cast:    []string{"Cast_test1", "Cast_test2"},
-			Tags:    []moviepb.Tag{moviepb.Tag_Adventure, moviepb.Tag_Fantasy},
+	tests := []testCase{
+		{
+			name:        "not_exists",
+			args:        "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
+			expected:    nil,
+			expectedErr: "rpc error: code = NotFound desc = Record with ID:9e6f9248-e147-4cbe-9c4f-e3d06c79e361 does not exist!",
 		},
-	}, nil
-}
+		{
+			name:        "found_movie",
+			args:        movieID,
+			expected:    mvObj,
+			expectedErr: "",
+		},
+	}
 
-func updateMoviesConfig(config *TestConfig) {
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestMovieSrv.GetMovie(context.Background(), &moviepb.GetMovieRequest{Id: tcase.args})
 
-	config.Body = &moviepb.Movie{
-		Name:     "Movie_test",
-		Summary:  "Random summary: " + String(40),
-		Cast:     []string{String(8) + "_test1", String(8) + "_test2"},
-		Director: String(10),
-		Writers:  []string{String(10), String(8), String(6)},
-		Tags:     []moviepb.Tag{moviepb.Tag_Adventure, moviepb.Tag_Fantasy},
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
 	}
 }
 
-func testGetMovieById(objID string, config *TestConfig) error {
+func TestListMovies(t *testing.T) {
+	TestMovieSrv = getMovieServer()
 
-	// Convert srv from interface to server
-	srv := config.Server.(*movieServer)
+	type testCase struct {
+		name        string
+		args        string
+		expected    *moviepb.ListMoviesResponse
+		expectedErr string
+	}
 
-	resp, err := srv.GetMovie(config.Context, &moviepb.GetMovieRequest{Id: objID})
+	mvObj := &moviepb.Movie{
+		Name:    "test_list_movies",
+		Summary: "test_list_movies_summary",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
-		return err
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	movieID := resp.GetId()
+
+	tests := []testCase{
+		{
+			name:        "found_movies",
+			args:        movieID,
+			expected:    &moviepb.ListMoviesResponse{Movies: []*moviepb.Movie{mvObj}},
+			expectedErr: "",
+		},
 	}
 
-	// Validate output is not empty
-	if resp.String() == "" {
-		return fmt.Errorf("Empty Response of GetByID call!")
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestMovieSrv.ListMovies(context.Background(), &moviepb.ListMoviesRequest{})
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
 	}
-
-	// Verify the fields in response matches with the config passed
-	configMv := config.Body.(*moviepb.Movie)
-
-	if !reflect.DeepEqual(resp, configMv) {
-		return fmt.Errorf("Fields do not match the required configuration!")
-	}
-
-	return nil
 }
 
-func testPostMovie(config *TestConfig) (string, error) {
+func TestUpdateMovie(t *testing.T) {
+	TestMovieSrv = getMovieServer()
 
-	// Convert srv from interface to server
-	srv := config.Server.(*movieServer)
-	mvObj := config.Body.(*moviepb.Movie)
+	type testCase struct {
+		name        string
+		args        *moviepb.UpdateMovieRequest
+		expected    string
+		expectedErr string
+	}
 
-	resp, err := srv.CreateMovie(config.Context, &moviepb.CreateMovieRequest{Movie: mvObj})
+	mvObj := &moviepb.Movie{
+		Name:    "test_update_movie",
+		Summary: "test_update_movie_summary",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
-		return "", err
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	movieID := resp.GetId()
+
+	tests := []testCase{
+		{
+			name: "not_exists",
+			args: &moviepb.UpdateMovieRequest{
+				Id:    "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
+				Movie: &moviepb.Movie{}},
+			expected:    "",
+			expectedErr: "rpc error: code = NotFound desc = Movie Record with ID:9e6f9248-e147-4cbe-9c4f-e3d06c79e361 does not exist!",
+		},
+		{
+			name: "bad_id_update",
+			args: &moviepb.UpdateMovieRequest{
+				Id: movieID,
+				Movie: &moviepb.Movie{
+					Id:      "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
+					Name:    "test_update_movie",
+					Summary: "test_update_movie_summary",
+					Cast:    []string{"test_cast1", "test_cast2"},
+				},
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = Cannot update the ID of object!",
+		},
+		{
+			name: "bad_input",
+			args: &moviepb.UpdateMovieRequest{
+				Id: movieID,
+				Movie: &moviepb.Movie{
+					Name:    "test_update_movie",
+					Summary: "summary",
+					Cast:    []string{"test_cast1", "test_cast2"},
+				},
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = Input is not valid! The summary should be between 8 and 1200 characters.",
+		},
+		{
+			name: "updated_movie",
+			args: &moviepb.UpdateMovieRequest{
+				Id: movieID,
+				Movie: &moviepb.Movie{
+					Name:    "test_update_movie",
+					Summary: "test_update_movie_summary_updated",
+					Cast:    []string{"test_cast1", "test_cast2"},
+				},
+			},
+			expected:    movieID,
+			expectedErr: "",
+		},
 	}
 
-	// Verify Response is not empty
-	if resp.String() == "" {
-		return "", fmt.Errorf("Empty Response of POST call!")
-	}
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestMovieSrv.UpdateMovie(context.Background(), tcase.args)
 
-	id := resp.GetId()
-	return id, nil
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if !reflect.DeepEqual(actual.GetId(), tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
+	}
 }
 
-func testPutMovieById(objectId string, config *TestConfig) (string, error) {
+func TestDeleteMovie(t *testing.T) {
+	TestMovieSrv = getMovieServer()
 
-	// Convert srv from interface to server
-	srv := config.Server.(*movieServer)
-	mvObject := config.Body.(*moviepb.Movie)
+	type testCase struct {
+		name        string
+		args        string
+		expected    *empty.Empty
+		expectedErr string
+	}
 
-	resp, err := srv.UpdateMovie(config.Context, &moviepb.UpdateMovieRequest{Id: objectId, Movie: mvObject})
+	mvObj := &moviepb.Movie{
+		Name:    "test_delete_movie",
+		Summary: "test_delete_movie_summary",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
-		return "", err
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	movieID := resp.GetId()
+
+	tests := []testCase{
+		{
+			name:        "not_exists",
+			args:        "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
+			expected:    nil,
+			expectedErr: "rpc error: code = NotFound desc = Movie Record with ID:9e6f9248-e147-4cbe-9c4f-e3d06c79e361 does not exist!",
+		},
+		{
+			name:        "removed_movie",
+			args:        movieID,
+			expected:    &empty.Empty{},
+			expectedErr: "",
+		},
 	}
 
-	// Verify Response is not empty
-	if resp.String() == "" {
-		return "", fmt.Errorf("Empty Response of PUT call!")
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestMovieSrv.DeleteMovie(context.Background(), &moviepb.DeleteMovieRequest{Id: tcase.args})
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
 	}
-	return resp.GetId(), nil
 }
-
-func testDeleteMovieById(objectId string, config *TestConfig) error {
-
-	// Convert srv from interface to server
-	srv := config.Server.(*movieServer)
-
-	resp, err := srv.DeleteMovie(config.Context, &moviepb.DeleteMovieRequest{Id: objectId})
-	if err != nil {
-		return err
-	}
-
-	// Verify Response is empty
-	if resp.String() != "" {
-		return fmt.Errorf("Expecting Empty Response by DELETE call!")
-	}
-
-	return nil
-}
-
-// Steps in brief
-// 1. Initiate with a POST call
-// 2. Check whether the POST call was successful by GET call and asserting fields match
-// 3. Update the data using PUT call
-// 4. Repeat Step 2
-// 5. Update the data using PATCH call
-// 6. Repeat Step 2
-// 7. Delete the object using DELETE call
-// 8. Repeat Step 2 to verify deletion
