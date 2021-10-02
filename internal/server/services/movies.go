@@ -106,7 +106,7 @@ func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 	} else {
 		mvObject := req.GetMovie()
 		if mvObject.GetId() != "" {
-			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated")
+			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated...")
 		}
 		mvObject.Id = objID
 
@@ -219,11 +219,6 @@ func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.Part
 func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
 
 	log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
-
-	// err := ms.verifyAuthorization(ctx, "DeleteMovie")
-	// if err != nil {
-	// 	return nil, status.Errorf(codes.PermissionDenied, "Unauthorized to perform the folloowing action! %v", err)
-	// }
 
 	objID := req.GetId()
 
