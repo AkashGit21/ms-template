@@ -17,14 +17,7 @@ func getMovieServer() *movieServer {
 func TestCreateMovie(t *testing.T) {
 	TestMovieSrv = getMovieServer()
 
-	type testCase struct {
-		name        string
-		args        *moviepb.Movie
-		expected    string
-		expectedErr string
-	}
-
-	tests := []testCase{
+	tests := []TestCase{
 		{
 			name: "invalid_ID_error",
 			args: &moviepb.Movie{
@@ -66,13 +59,13 @@ func TestCreateMovie(t *testing.T) {
 
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: tcase.args})
+			actual, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: tcase.args.(*moviepb.Movie)})
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
-			if len(actual.GetId()) != len(tcase.expected) {
-				t.Errorf("\n\texpected: %v \n\tactual: %v", len(tcase.expected), len(actual.GetId()))
+			if len(actual.GetId()) != len(tcase.expected.(string)) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", len(tcase.expected.(string)), len(actual.GetId()))
 			}
 		})
 	}
@@ -80,13 +73,6 @@ func TestCreateMovie(t *testing.T) {
 
 func TestGetMovie(t *testing.T) {
 	TestMovieSrv = getMovieServer()
-
-	type testCase struct {
-		name        string
-		args        string
-		expected    *moviepb.Movie
-		expectedErr string
-	}
 
 	mvObj := &moviepb.Movie{
 		Name:    "test_get_movie",
@@ -99,7 +85,7 @@ func TestGetMovie(t *testing.T) {
 	}
 	movieID := resp.GetId()
 
-	tests := []testCase{
+	tests := []TestCase{
 		{
 			name:        "not_exists",
 			args:        "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
@@ -116,12 +102,12 @@ func TestGetMovie(t *testing.T) {
 
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestMovieSrv.GetMovie(context.Background(), &moviepb.GetMovieRequest{Id: tcase.args})
+			actual, err := TestMovieSrv.GetMovie(context.Background(), &moviepb.GetMovieRequest{Id: tcase.args.(string)})
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
-			if !reflect.DeepEqual(actual, tcase.expected) {
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual, tcase.expected) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
 			}
 		})
@@ -131,56 +117,78 @@ func TestGetMovie(t *testing.T) {
 func TestListMovies(t *testing.T) {
 	TestMovieSrv = getMovieServer()
 
-	type testCase struct {
-		name        string
-		args        string
-		expected    *moviepb.ListMoviesResponse
-		expectedErr string
-	}
-
-	mvObj := &moviepb.Movie{
-		Name:    "test_list_movies",
-		Summary: "test_list_movies_summary",
+	mvObj1 := &moviepb.Movie{
+		Name:    "test_list_movie1",
+		Summary: "test_list_movies_summary1",
 		Cast:    []string{"test_cast1", "test_cast2"},
 	}
-	_, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+	_, err := TestMovieSrv.CreateMovie(
+		context.Background(),
+		&moviepb.CreateMovieRequest{
+			Movie: mvObj1,
+		},
+	)
 	if err != nil {
 		t.Fatalf("Failed to create pre-requisite object!")
 	}
-	// movieID := resp.GetId()
 
-	tests := []testCase{
+	mvObj2 := &moviepb.Movie{
+		Name:    "test_list_movie2",
+		Summary: "test_list_movies_summary2",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	_, err = TestMovieSrv.CreateMovie(
+		context.Background(),
+		&moviepb.CreateMovieRequest{
+			Movie: mvObj2,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+
+	tests := []TestCase{
 		{
-			name:        "found_movies",
-			args:        "",
-			expected:    &moviepb.ListMoviesResponse{Movies: []*moviepb.Movie{mvObj}},
+			name:        "found_movie1",
+			args:        int32(1),
+			expected:    []*moviepb.Movie{mvObj1},
+			expectedErr: "",
+		},
+		{
+			name:        "found_movie2",
+			args:        int32(1),
+			expected:    []*moviepb.Movie{mvObj2},
 			expectedErr: "",
 		},
 	}
 
+	pageToken := ""
+	var req *moviepb.ListMoviesRequest
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestMovieSrv.ListMovies(context.Background(), &moviepb.ListMoviesRequest{})
+
+			if pageToken == "" {
+				req = &moviepb.ListMoviesRequest{PageSize: tcase.args.(int32)}
+			} else {
+				req = &moviepb.ListMoviesRequest{PageSize: tcase.args.(int32), PageToken: pageToken}
+			}
+			actual, err := TestMovieSrv.ListMovies(context.Background(), req)
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
-			if !reflect.DeepEqual(actual, tcase.expected) {
+			if (tcase.expected != nil || (actual != nil)) &&
+				!reflect.DeepEqual(actual.GetMovies(), tcase.expected.([]*moviepb.Movie)) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
 			}
+
+			pageToken = actual.GetNextPageToken()
 		})
 	}
 }
 
 func TestUpdateMovie(t *testing.T) {
 	TestMovieSrv = getMovieServer()
-
-	type testCase struct {
-		name        string
-		args        *moviepb.UpdateMovieRequest
-		expected    string
-		expectedErr string
-	}
 
 	mvObj := &moviepb.Movie{
 		Name:    "test_update_movie",
@@ -193,7 +201,7 @@ func TestUpdateMovie(t *testing.T) {
 	}
 	movieID := resp.GetId()
 
-	tests := []testCase{
+	tests := []TestCase{
 		{
 			name: "not_exists",
 			args: &moviepb.UpdateMovieRequest{
@@ -246,13 +254,13 @@ func TestUpdateMovie(t *testing.T) {
 
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestMovieSrv.UpdateMovie(context.Background(), tcase.args)
+			actual, err := TestMovieSrv.UpdateMovie(context.Background(), tcase.args.(*moviepb.UpdateMovieRequest))
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
-			if !reflect.DeepEqual(actual.GetId(), tcase.expected) {
-				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual.GetId(), tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual.GetId())
 			}
 		})
 	}
@@ -260,13 +268,6 @@ func TestUpdateMovie(t *testing.T) {
 
 func TestDeleteMovie(t *testing.T) {
 	TestMovieSrv = getMovieServer()
-
-	type testCase struct {
-		name        string
-		args        string
-		expected    *empty.Empty
-		expectedErr string
-	}
 
 	mvObj := &moviepb.Movie{
 		Name:    "test_delete_movie",
@@ -279,7 +280,7 @@ func TestDeleteMovie(t *testing.T) {
 	}
 	movieID := resp.GetId()
 
-	tests := []testCase{
+	tests := []TestCase{
 		{
 			name:        "not_exists",
 			args:        "9e6f9248-e147-4cbe-9c4f-e3d06c79e361",
@@ -299,14 +300,14 @@ func TestDeleteMovie(t *testing.T) {
 			actual, err := TestMovieSrv.DeleteMovie(
 				context.Background(),
 				&moviepb.DeleteMovieRequest{
-					Id: tcase.args,
+					Id: tcase.args.(string),
 				},
 			)
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
-			if !reflect.DeepEqual(actual, tcase.expected) {
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual, tcase.expected) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
 			}
 		})

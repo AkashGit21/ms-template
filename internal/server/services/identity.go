@@ -97,6 +97,7 @@ func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequ
 	if obj, ok := is.keys[uname]; ok {
 		entry := is.userEntries[obj]
 		if entry.active {
+			log.Println("End GetUser!")
 			return entry.user, nil
 		}
 	}
@@ -115,25 +116,18 @@ func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUs
 // Deletes a user, their profile, and all of their authored messages.
 func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUserRequest) (*empty.Empty, error) {
 	log.Println("Beginning DeleteUser request: ", req)
-	is.mu.Lock()
-	defer is.mu.Unlock()
 
 	objID := req.GetUsername()
-	log.Println("objID: ", objID)
 
 	// Check if object already exists or not
 	// codes.NotFound
+	if index, ok := is.keys[objID]; ok && is.userEntries[index].active {
 
-	if index, ok := is.keys[objID]; ok {
-		log.Println("Inside dictionary!")
-
-		entry := is.userEntries[index]
-		log.Println("User entry: ", entry)
-		log.Println("User to be removed: ", is.userEntries[index].user)
-
+		is.mu.Lock()
+		defer is.mu.Unlock()
 		is.userEntries[index].active = false
-
 	} else {
+
 		return nil, status.Errorf(codes.NotFound, "A user with username `%s` does not exist!", objID)
 	}
 

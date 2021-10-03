@@ -165,56 +165,56 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 	}, nil
 }
 
-func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.PartialUpdateMovieRequest) (*moviepb.PartialUpdateMovieResponse, error) {
+// func (ms *movieServer) PartialUpdateMovie(ctx context.Context, req *moviepb.PartialUpdateMovieRequest) (*moviepb.PartialUpdateMovieResponse, error) {
 
-	log.Println("[DEBUG] Beginning PartialUpdateMovieRequest: ", req)
+// 	log.Println("[DEBUG] Beginning PartialUpdateMovieRequest: ", req)
 
-	objID := req.GetId()
+// 	objID := req.GetId()
 
-	// Check if object already exists or not
-	// codes.NotFound
-	if index, ok := ms.keys[objID]; ok && ms.Store[index].active {
+// 	// Check if object already exists or not
+// 	// codes.NotFound
+// 	if index, ok := ms.keys[objID]; ok && ms.Store[index].active {
 
-		// Validate each field individually and Update the fields at a go afterwards
-		ms.mu.Lock()
-		defer ms.mu.Unlock()
-		mvObject := ms.Store[index].movie
+// 		// Validate each field individually and Update the fields at a go afterwards
+// 		ms.mu.Lock()
+// 		defer ms.mu.Unlock()
+// 		mvObject := ms.Store[index].movie
 
-		// Verify that the ID is not updated
-		newID := req.GetId()
-		if newID != "" && newID != objID {
-			return nil, status.Errorf(codes.InvalidArgument, "Cannot update the ID of object!")
-		}
+// 		// Verify that the ID is not updated
+// 		newID := req.GetId()
+// 		if newID != "" && newID != objID {
+// 			return nil, status.Errorf(codes.InvalidArgument, "Cannot update the ID of object!")
+// 		}
 
-		if req.GetSummary() != "" {
-			mvObject.Summary = req.GetSummary()
-		}
+// 		if req.GetSummary() != "" {
+// 			mvObject.Summary = req.GetSummary()
+// 		}
 
-		if req.GetDirector() != "" {
-			mvObject.Director = req.GetDirector()
-		}
+// 		if req.GetDirector() != "" {
+// 			mvObject.Director = req.GetDirector()
+// 		}
 
-		if req.GetCast() != nil {
-			mvObject.Cast = req.GetCast()
-		}
+// 		if req.GetCast() != nil {
+// 			mvObject.Cast = req.GetCast()
+// 		}
 
-		if req.GetTags() != nil {
-			mvObject.Tags = req.GetTags()
-		}
+// 		if req.GetTags() != nil {
+// 			mvObject.Tags = req.GetTags()
+// 		}
 
-		if req.GetWriters() != nil {
-			mvObject.Writers = req.GetWriters()
-		}
+// 		if req.GetWriters() != nil {
+// 			mvObject.Writers = req.GetWriters()
+// 		}
 
-	} else {
-		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
-	}
+// 	} else {
+// 		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
+// 	}
 
-	log.Println("[DEBUG] End PartialUpdateMovieRequest!")
-	return &moviepb.PartialUpdateMovieResponse{
-		Id: objID,
-	}, nil
-}
+// 	log.Println("[DEBUG] End PartialUpdateMovieRequest!")
+// 	return &moviepb.PartialUpdateMovieResponse{
+// 		Id: objID,
+// 	}, nil
+// }
 
 func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
 
