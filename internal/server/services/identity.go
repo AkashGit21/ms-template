@@ -16,9 +16,8 @@ import (
 // NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer() *identityServer {
 	return &identityServer{
-		token:       server.NewTokenGenerator(),
-		keys:        map[string]int{},
-		userEntries: []userEntry{},
+		token: server.NewTokenGenerator(),
+		keys:  map[string]int{},
 	}
 }
 
@@ -50,19 +49,12 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 	defer is.mu.Unlock()
 
 	user := req.GetUser()
-	var uname string
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
-
 	if _, ok := is.keys[user.GetUsername()]; ok {
 		return nil, status.Errorf(codes.AlreadyExists, "A user with username `%s` already exists!", user.GetUsername())
 	} else {
-
-		uname = user.GetUsername()
-		if uname == "" {
-			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! Username is required.")
-		}
 
 		// Validate format of Input and store the data
 		err := is.validate(user)
@@ -88,7 +80,9 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 	}
 	log.Println("End of CreateUser!")
 
-	return &identitypb.CreateUserResponse{Username: uname}, nil
+	return &identitypb.CreateUserResponse{
+		Username: user.GetUsername(),
+	}, nil
 }
 
 // Retrieves the User with the given uri.
@@ -124,17 +118,26 @@ func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUs
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	index, ok := is.keys[req.GetUsername()]
+	objID := req.GetUsername()
+	log.Println("objID: ", objID)
 
-	if !ok {
-		return nil, status.Errorf(
-			codes.NotFound,
-			"A user with username `%s` not found.", req.GetUsername())
+	// Check if object already exists or not
+	// codes.NotFound
+
+	if index, ok := is.keys[objID]; ok {
+		log.Println("Inside dictionary!")
+
+		entry := is.userEntries[index]
+		log.Println("User entry: ", entry)
+		log.Println("User to be removed: ", is.userEntries[index].user)
+
+		is.userEntries[index].active = false
+
+	} else {
+		return nil, status.Errorf(codes.NotFound, "A user with username `%s` does not exist!", objID)
 	}
 
-	entry := is.userEntries[index]
-	is.userEntries[index] = userEntry{user: entry.user, active: false}
-
+	log.Println("[DEBUG] End DeleteUser!")
 	return &empty.Empty{}, nil
 }
 
@@ -196,7 +199,7 @@ func (is *identityServer) validate(u *identitypb.User) error {
 			(u.GetUsername() != x.user.GetUsername()) {
 			return status.Errorf(
 				codes.AlreadyExists,
-				"A user with email %s already exists.",
+				"A user with email `%s` already exists.",
 				u.GetEmail())
 		}
 	}

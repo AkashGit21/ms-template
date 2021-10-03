@@ -26,7 +26,7 @@ func TestCreateMovie(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name: "invalid ID error",
+			name: "invalid_ID_error",
 			args: &moviepb.Movie{
 				Id:      "test_id",
 				Name:    "test_name",
@@ -39,7 +39,7 @@ func TestCreateMovie(t *testing.T) {
 			expectedErr: "rpc error: code = InvalidArgument desc = Input is not valid! ID is auto-generated...",
 		},
 		{
-			name: "invalid data error",
+			name: "invalid_data_error",
 			args: &moviepb.Movie{
 				Name:    " ",
 				Summary: "test_summary",
@@ -143,16 +143,16 @@ func TestListMovies(t *testing.T) {
 		Summary: "test_list_movies_summary",
 		Cast:    []string{"test_cast1", "test_cast2"},
 	}
-	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+	_, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
 		t.Fatalf("Failed to create pre-requisite object!")
 	}
-	movieID := resp.GetId()
+	// movieID := resp.GetId()
 
 	tests := []testCase{
 		{
 			name:        "found_movies",
-			args:        movieID,
+			args:        "",
 			expected:    &moviepb.ListMoviesResponse{Movies: []*moviepb.Movie{mvObj}},
 			expectedErr: "",
 		},
@@ -296,7 +296,12 @@ func TestDeleteMovie(t *testing.T) {
 
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestMovieSrv.DeleteMovie(context.Background(), &moviepb.DeleteMovieRequest{Id: tcase.args})
+			actual, err := TestMovieSrv.DeleteMovie(
+				context.Background(),
+				&moviepb.DeleteMovieRequest{
+					Id: tcase.args,
+				},
+			)
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
