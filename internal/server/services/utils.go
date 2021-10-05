@@ -2,9 +2,7 @@ package services
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
-	"time"
 )
 
 // isAllowedSummary checks whether the given string is a valid Summary or not, i.e -
@@ -32,20 +30,20 @@ func StringLenBetween(s interface{}, min, max int) bool {
 	return false
 }
 
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+// const charset = "abcdefghijklmnopqrstuvwxyz" +
+// 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
-var seededRand *rand.Rand = rand.New(
-	rand.NewSource(time.Now().UnixNano()))
+// var seededRand *rand.Rand = rand.New(
+// 	rand.NewSource(time.Now().UnixNano()))
 
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
-}
+// func StringWithCharset(length int, charset string) string {
+// 	b := make([]byte, length)
+// 	for i := range b {
+// 		b[i] = charset[seededRand.Intn(len(charset))]
+// 	}
+// 	return string(b)
+// }
 
-func String(length int) string {
-	return StringWithCharset(length, charset)
-}
+// func String(length int) string {
+// 	return StringWithCharset(length, charset)
+// }

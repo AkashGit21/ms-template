@@ -2,165 +2,308 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	"github.com/golang/protobuf/ptypes/empty"
 )
 
-func TestIdentityService(t *testing.T) {
+func TestCreateUser(t *testing.T) {
+	TestIdentitySrv = NewIdentityServer()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Create some basic configuration for testing
-	identitySrv := NewIdentityServer()
-	conf := generateIdentityConfig(identitySrv)
-	// Apply POST call testing and get ID in case of success
-	objectId, err := testPostUser(ctx, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	// Verify that the fields of Response and provided Configuration matches
-	err = testGetUserById(ctx, objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-
-	// Update the configuration for further Testing
-	updateIdentityConfig(conf)
-	// Apply PUT call testing and get ID in case of success
-	// objectId, err = testPutUserById(ctx, objectId, conf)
-	// if err != nil {
-	// 	t.Errorf(err.Error())
-	// 	return
-	// }
-	// // Verify that the fields of Response and provided Configuration matches
-	// err = testGetUserById(ctx, objectId, conf)
-	// if err != nil {
-	// 	t.Errorf(err.Error())
-	// 	return
-	// }
-
-	// // TODO: Unit Testing for PATCH call
-
-	// Apply DELETE call testing and get ID in case of success
-	err = testDeleteUserById(ctx, objectId, conf)
-	if err != nil {
-		t.Errorf(err.Error())
-		return
-	}
-	err = testGetUserById(ctx, objectId, conf)
-	if err == nil {
-		t.Errorf("Record is not deleted. DELETE call failed!")
-		return
-	}
-}
-
-func generateIdentityConfig(srv *identityServer) *TestConfig {
-	return &TestConfig{
-		Server: srv,
-		URL:    "/v1/users",
-		Body: &identitypb.User{
-			Username:  "usrname1",
-			Email:     "somemail98@domain.com",
-			Role:      identitypb.Role_ADMIN,
-			FirstName: "Alice",
-			Password:  "abcdef",
+	tests := []TestCase{
+		{
+			name: "invalid_username",
+			args: &identitypb.User{
+				Username:  "",
+				Email:     "test_email@domain.com",
+				Password:  "test_pwd",
+				Role:      identitypb.Role_NORMAL,
+				FirstName: "test_first",
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = The field `username` is required.",
+		},
+		{
+			name: "invalid_email",
+			args: &identitypb.User{
+				Username:  "test_username",
+				Password:  "test_pwd",
+				Role:      identitypb.Role_NORMAL,
+				FirstName: "test_first",
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = InvalidArgument desc = The field `email` is required.",
+		},
+		{
+			name: "added_user",
+			args: &identitypb.User{
+				Username:  "test_username",
+				Email:     "test_email@domain.com",
+				Password:  "test_pwd",
+				Role:      identitypb.Role_NORMAL,
+				FirstName: "test_first",
+			},
+			expected:    "test_username",
+			expectedErr: "",
+		},
+		{
+			name: "bad_username",
+			args: &identitypb.User{
+				Username:  "test_username",
+				Email:     "test_email2@domain.com",
+				Password:  "test_pwd",
+				Role:      identitypb.Role_NORMAL,
+				FirstName: "test_first",
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = AlreadyExists desc = A user with username `test_username` already exists!",
+		},
+		{
+			name: "bad_email",
+			args: &identitypb.User{
+				Username:  "test_username2",
+				Email:     "test_email@domain.com",
+				Password:  "test_pwd",
+				Role:      identitypb.Role_NORMAL,
+				FirstName: "test_first",
+			},
+			expected:    "",
+			expectedErr: "rpc error: code = AlreadyExists desc = A user with email `test_email@domain.com` already exists.",
 		},
 	}
+
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestIdentitySrv.CreateUser(context.Background(), &identitypb.CreateUserRequest{User: tcase.args.(*identitypb.User)})
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual.GetUsername(), tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual.GetUsername())
+			}
+		})
+	}
 }
 
-func updateIdentityConfig(config *TestConfig) {
-	config.Body = &identitypb.User{
-		Username:  "usrname2",
-		Email:     "updatedmail98@domain.com",
-		FirstName: "John",
+func TestGetUser(t *testing.T) {
+	TestIdentitySrv = NewIdentityServer()
+
+	userObj := &identitypb.User{
+		Username:  "test_username",
+		Email:     "test_email@domain.com",
+		Password:  "test_pwd",
 		Role:      identitypb.Role_NORMAL,
-		Password:  "abcdef123",
+		FirstName: "test_first",
+	}
+	resp, err := TestIdentitySrv.CreateUser(context.Background(), &identitypb.CreateUserRequest{User: userObj})
+	if err != nil {
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	uname := resp.GetUsername()
+
+	tests := []TestCase{
+		{
+			name:        "bad_username",
+			args:        "test_user",
+			expected:    nil,
+			expectedErr: "rpc error: code = NotFound desc = A user with username `test_user` not found!",
+		},
+		{
+			name:        "found_user",
+			args:        uname,
+			expected:    userObj,
+			expectedErr: "",
+		},
+	}
+
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestIdentitySrv.GetUser(context.Background(), &identitypb.GetUserRequest{Username: tcase.args.(string)})
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
 	}
 }
 
-func testGetUserById(ctx context.Context, objID string, config *TestConfig) error {
+func TestListUsers(t *testing.T) {
+	TestIdentitySrv = NewIdentityServer()
 
-	// Convert srv from interface to server
-	srv := config.Server.(*identityServer)
-
-	resp, err := srv.GetUser(ctx, &identitypb.GetUserRequest{Username: objID})
+	userObj1 := &identitypb.User{
+		Username:  "test_list_user1",
+		Email:     "test_list_email1@domain.in",
+		Password:  "test_list_pwd",
+		Role:      identitypb.Role_NORMAL,
+		FirstName: "test_first",
+	}
+	_, err := TestIdentitySrv.CreateUser(
+		context.Background(),
+		&identitypb.CreateUserRequest{
+			User: userObj1,
+		},
+	)
 	if err != nil {
-		return err
+		t.Fatalf("Failed to create pre-requisite object!")
 	}
 
-	// Validate output is not empty
-	if resp.String() == "" {
-		return fmt.Errorf("Empty Response of GetByID call!")
+	userObj2 := &identitypb.User{
+		Username:  "test_list_user2",
+		Email:     "test_list_email2@domain.in",
+		Password:  "test_list_pwd",
+		Role:      identitypb.Role_NORMAL,
+		FirstName: "test_first",
+	}
+	_, err = TestIdentitySrv.CreateUser(
+		context.Background(),
+		&identitypb.CreateUserRequest{
+			User: userObj2,
+		},
+	)
+	if err != nil {
+		t.Fatalf("Failed to create pre-requisite object!")
 	}
 
-	// Verify the fields in response matches with the config passed
-	configUser := config.Body.(*identitypb.User)
-
-	if !reflect.DeepEqual(resp, configUser) {
-		return fmt.Errorf("Fields do not match the required configuration!")
+	tests := []TestCase{
+		{
+			name:        "found_user1",
+			args:        int32(1),
+			expected:    []*identitypb.User{userObj1},
+			expectedErr: "",
+		},
+		{
+			name:        "found_user2",
+			args:        int32(1),
+			expected:    []*identitypb.User{userObj2},
+			expectedErr: "",
+		},
 	}
 
-	return nil
+	pageToken := ""
+	var req *identitypb.ListUsersRequest
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+
+			if pageToken == "" {
+				req = &identitypb.ListUsersRequest{PageSize: tcase.args.(int32)}
+			} else {
+				req = &identitypb.ListUsersRequest{PageSize: tcase.args.(int32), PageToken: pageToken}
+			}
+			actual, err := TestIdentitySrv.ListUsers(context.Background(), req)
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if (tcase.expected != nil || (actual != nil)) &&
+				!reflect.DeepEqual(
+					actual.GetUsers(), tcase.expected.([]*identitypb.User),
+				) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+
+			pageToken = actual.GetNextPageToken()
+		})
+	}
 }
 
-func testPostUser(ctx context.Context, config *TestConfig) (string, error) {
+// TODO: Tests for UpdateUser is not written
+func TestUpdateUser(t *testing.T) {
+	TestIdentitySrv = NewIdentityServer()
 
-	// Convert srv from interface to server
-	srv := config.Server.(*identityServer)
-	userObj := config.Body.(*identitypb.User)
-
-	resp, err := srv.CreateUser(ctx, &identitypb.CreateUserRequest{User: userObj})
+	userObj := &identitypb.User{
+		Username:  "test_list_user1",
+		Email:     "test_list_email1@domain.in",
+		Password:  "test_list_pwd",
+		Role:      identitypb.Role_NORMAL,
+		FirstName: "test_first",
+	}
+	_, err := TestIdentitySrv.CreateUser(
+		context.Background(),
+		&identitypb.CreateUserRequest{
+			User: userObj,
+		},
+	)
 	if err != nil {
-		return "", err
+		t.Fatalf("Failed to create pre-requisite object!")
 	}
 
-	// Verify Response is not empty
-	if resp.String() == "" {
-		return "", fmt.Errorf("Empty Response of POST call!")
+	tests := []TestCase{
+		{
+			name:        "demo",
+			args:        &identitypb.UpdateUserRequest{},
+			expected:    &identitypb.User{},
+			expectedErr: "",
+		},
 	}
 
-	id := resp.GetUsername()
-	return id, nil
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestIdentitySrv.UpdateUser(
+				context.Background(),
+				tcase.args.(*identitypb.UpdateUserRequest))
+
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
+	}
 }
 
-// func testPutUserById(ctx context.Context, objectId string, config *TestConfig) (string, error) {
+func TestDeleteUser(t *testing.T) {
+	TestIdentitySrv = NewIdentityServer()
 
-// 	// Convert srv from interface to server
-// 	srv := config.Server.(*identityServer)
-// 	userObject := config.Body.(*identitypb.User)
-
-// 	resp, err := srv.UpdateUser(ctx, &identitypb.UpdateUserRequest{Id: objectId, User: userObject})
-// 	if err != nil {
-// 		return "", err
-// 	}
-
-// 	// Verify Response is not empty
-// 	if resp.String() == "" {
-// 		return "", fmt.Errorf("Empty Response of PUT call!")
-// 	}
-// 	return resp.GetId(), nil
-// }
-
-func testDeleteUserById(ctx context.Context, objectId string, config *TestConfig) error {
-
-	// Convert srv from interface to server
-	srv := config.Server.(*identityServer)
-
-	resp, err := srv.DeleteUser(ctx, &identitypb.DeleteUserRequest{Username: objectId})
+	userObj := &identitypb.User{
+		Username:  "test_delete_user",
+		Email:     "test_delete_email@domain.in",
+		Password:  "test_delete_pwd",
+		Role:      identitypb.Role_NORMAL,
+		FirstName: "test_first",
+	}
+	resp, err := TestIdentitySrv.CreateUser(context.Background(), &identitypb.CreateUserRequest{User: userObj})
 	if err != nil {
-		return err
+		t.Fatalf("Failed to create pre-requisite object!")
+	}
+	uname := resp.GetUsername()
+
+	tests := []TestCase{
+		{
+			name:        "not_exists",
+			args:        "test_user",
+			expected:    nil,
+			expectedErr: "rpc error: code = NotFound desc = A user with username `test_user` does not exist!",
+		},
+		{
+			name:        "removed_user",
+			args:        uname,
+			expected:    &empty.Empty{},
+			expectedErr: "",
+		},
 	}
 
-	// Verify Response is empty
-	if resp.String() != "" {
-		return fmt.Errorf("Expecting Empty Response by DELETE call!")
-	}
+	for _, tcase := range tests {
+		t.Run(tcase.name, func(t *testing.T) {
+			actual, err := TestIdentitySrv.DeleteUser(
+				context.Background(),
+				&identitypb.DeleteUserRequest{
+					Username: tcase.args.(string),
+				},
+			)
 
-	return nil
+			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
+			}
+			if (tcase.expected != nil || (actual != nil)) && !reflect.DeepEqual(actual, tcase.expected) {
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
+			}
+		})
+	}
 }

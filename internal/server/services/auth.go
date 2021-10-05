@@ -36,11 +36,11 @@ func (as *authServer) Login(ctx context.Context, req *authpb.LoginRequest) (*aut
 	log.Println("Beginning of Login! ", req)
 	user, err := as.identityStore.GetUser(ctx, &identitypb.GetUserRequest{Username: req.GetUsername()})
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "cannot find user: %v", err)
+		return nil, status.Errorf(codes.NotFound, "incorrect username/password!")
 	}
 
 	if user == nil || !server.DoesPasswordMatch(req.GetPassword(), user.GetPassword()) {
-		return nil, status.Errorf(codes.NotFound, "incorrect username/password")
+		return nil, status.Errorf(codes.NotFound, "incorrect username/password!")
 	}
 
 	token, err := as.JWT.GenerateToken(user)

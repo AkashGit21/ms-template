@@ -34,7 +34,6 @@ type jwtTokenGenerator struct {
 }
 
 func (jm *JWTManager) GenerateToken(user *identitypb.User) (string, error) {
-
 	// Create the Claims
 	claims := UserClaims{
 		StandardClaims: jwt.StandardClaims{

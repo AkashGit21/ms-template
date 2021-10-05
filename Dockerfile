@@ -1,9 +1,5 @@
 FROM golang:1.17-alpine AS builder
 
-# Install git.
-# RUN apk add --no-cache git
-
-# Setup directory.
 WORKDIR /go/src/github.com/AkashGit21/ms-template
 COPY . .
 
