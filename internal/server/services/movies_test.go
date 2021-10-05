@@ -2,7 +2,9 @@ package services
 
 import (
 	"context"
+	"log"
 	"reflect"
+	"strconv"
 	"testing"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
@@ -311,5 +313,64 @@ func TestDeleteMovie(t *testing.T) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
 			}
 		})
+	}
+}
+
+func BenchmarkCreateMovie(b *testing.B) {
+
+	TestMovieSrv = getMovieServer()
+	for i := 0; i < b.N; i++ {
+		mvObj := &moviepb.Movie{
+			Name:    "test_create_movie" + strconv.FormatInt(int64(i), 10),
+			Summary: "test_create_movie_summary" + strconv.FormatInt(int64(i), 10),
+			Cast:    []string{"test_cast1", "test_cast2"},
+		}
+		_, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+		if err != nil {
+			log.Fatalf("Failed to create pre-requisite object!")
+		}
+		// log.Println(resp.GetId())
+	}
+}
+
+func BenchmarkGetMovie(b *testing.B) {
+
+	TestMovieSrv = getMovieServer()
+	mvObj := &moviepb.Movie{
+		Name:    "test_get_movie",
+		Summary: "test_get_movie_summary",
+		Cast:    []string{"test_cast1", "test_cast2"},
+	}
+	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+	if err != nil {
+		log.Fatalf("Failed to create pre-requisite object!")
+	}
+	movieID := resp.GetId()
+
+	for i := 0; i < b.N; i++ {
+		if _, err := TestMovieSrv.GetMovie(context.Background(), &moviepb.GetMovieRequest{Id: movieID}); err != nil {
+			log.Fatalf("Failed to create pre-requisite object!")
+		}
+	}
+}
+
+func BenchmarkDeleteMovie(b *testing.B) {
+
+	TestMovieSrv = getMovieServer()
+	for i := 0; i < b.N; i++ {
+		mvObj := &moviepb.Movie{
+			Name:    "test_delete_movie",
+			Summary: "test_delete_movie_summary",
+			Cast:    []string{"test_cast1", "test_cast2"},
+		}
+		resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
+		if err != nil {
+			log.Fatalf("Failed to create pre-requisite object!")
+		}
+		movieID := resp.GetId()
+
+		if _, err := TestMovieSrv.DeleteMovie(context.Background(), &moviepb.DeleteMovieRequest{Id: movieID}); err != nil {
+			log.Fatalf("Failed to create pre-requisite object!")
+		}
 	}
 }
