@@ -72,6 +72,8 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 		user.Password = pwd
 		user.CreateTime = now
 		user.UpdateTime = now
+		user.SessionEndTime = 0
+		user.RequestsMadeBySession = 0
 
 		// Insert.
 		index := len(is.userEntries)

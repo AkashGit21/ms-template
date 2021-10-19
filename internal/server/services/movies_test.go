@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"log"
 	"reflect"
 	"strconv"
 	"testing"
@@ -325,11 +324,10 @@ func BenchmarkCreateMovie(b *testing.B) {
 			Summary: "test_create_movie_summary" + strconv.FormatInt(int64(i), 10),
 			Cast:    []string{"test_cast1", "test_cast2"},
 		}
-		_, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
-		if err != nil {
-			log.Fatalf("Failed to create pre-requisite object!")
+		if _, err := TestMovieSrv.CreateMovie(context.Background(),
+			&moviepb.CreateMovieRequest{Movie: mvObj}); err != nil {
+			b.Errorf("Failed to create pre-requisite object!")
 		}
-		// log.Println(resp.GetId())
 	}
 }
 
@@ -343,13 +341,16 @@ func BenchmarkGetMovie(b *testing.B) {
 	}
 	resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 	if err != nil {
-		log.Fatalf("Failed to create pre-requisite object!")
+		b.Errorf("Failed to create pre-requisite object!")
 	}
 	movieID := resp.GetId()
 
+	b.StopTimer()
+	b.StartTimer()
 	for i := 0; i < b.N; i++ {
-		if _, err := TestMovieSrv.GetMovie(context.Background(), &moviepb.GetMovieRequest{Id: movieID}); err != nil {
-			log.Fatalf("Failed to create pre-requisite object!")
+		if _, err := TestMovieSrv.GetMovie(context.Background(),
+			&moviepb.GetMovieRequest{Id: movieID}); err != nil {
+			b.Errorf("Failed to get pre-requisite object!")
 		}
 	}
 }
@@ -365,12 +366,15 @@ func BenchmarkDeleteMovie(b *testing.B) {
 		}
 		resp, err := TestMovieSrv.CreateMovie(context.Background(), &moviepb.CreateMovieRequest{Movie: mvObj})
 		if err != nil {
-			log.Fatalf("Failed to create pre-requisite object!")
+			b.Errorf("Failed to create pre-requisite object!")
 		}
 		movieID := resp.GetId()
 
-		if _, err := TestMovieSrv.DeleteMovie(context.Background(), &moviepb.DeleteMovieRequest{Id: movieID}); err != nil {
-			log.Fatalf("Failed to create pre-requisite object!")
+		b.StopTimer()
+		b.StartTimer()
+		if _, err := TestMovieSrv.DeleteMovie(context.Background(),
+			&moviepb.DeleteMovieRequest{Id: movieID}); err != nil {
+			b.Errorf("Failed to delete pre-requisite object!")
 		}
 	}
 }

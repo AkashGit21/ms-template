@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 	"fmt"
-	"log"
 	"reflect"
 	"sync"
 
@@ -130,7 +129,7 @@ func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovie
 
 func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
 
-	log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
+	// log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
 
 	objID := req.GetId()
 
@@ -159,7 +158,7 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
 	}
 
-	log.Println("[DEBUG] End UpdateMovieRequest!")
+	// log.Println("[DEBUG] End UpdateMovieRequest!")
 	return &moviepb.UpdateMovieResponse{
 		Id: objID,
 	}, nil

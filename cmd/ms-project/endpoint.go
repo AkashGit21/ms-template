@@ -284,8 +284,8 @@ func (s *Servers) getUnaryInterceptors() grpc.ServerOption {
 	rateLimit := interceptors.NewRateLimiter()
 
 	return grpc.ChainUnaryInterceptor(
-		rateLimit.UnaryRateLimiter(rateLimit),
 		s.Backend.AuthInterceptor.Unary(),
+		rateLimit.UnaryRateLimiter(rateLimit),
 		s.Backend.ObserverRegistry.UnaryInterceptor,
 	)
 }
