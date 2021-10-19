@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
@@ -18,8 +19,8 @@ import (
 
 const (
 	DATABASE = "msZone"
-	USERNAME = "devAkash"
-	PASSWORD = "Dev$987"
+	USERNAME = "db_username"
+	PASSWORD = "db_password"
 	CLUSTER  = "cluster0.xvo2i.mongodb.net"
 	USERS    = "users"
 	MOVIES   = "movies"
@@ -30,7 +31,14 @@ type MongoDBLayer struct {
 }
 
 func NewMongoDBLayer(connection string) (persistence.DatabaseHandler, error) {
-	uri, err := getConnectionURI(DATABASE, USERNAME, PASSWORD, CLUSTER)
+	var dbUsername, dbPassword string
+	if dbUsername = os.Getenv("DB_USERNAME"); dbUsername == "" {
+		dbUsername = USERNAME
+	}
+	if dbPassword = os.Getenv("DB_PASSWORD"); dbPassword == "" {
+		dbPassword = PASSWORD
+	}
+	uri, err := getConnectionURI(DATABASE, dbUsername, dbPassword, CLUSTER)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
