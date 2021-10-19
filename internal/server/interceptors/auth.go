@@ -12,6 +12,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var (
+	CURRENT_USERNAME = ""
+	CURRENT_ROLE     = ""
+)
+
 // AuthInterceptor is a server interceptor for authentication and authorization
 type AuthInterceptor struct {
 	jwtManager      *server.JWTManager
@@ -87,9 +92,11 @@ func (interceptor *AuthInterceptor) authorize(ctx context.Context, method string
 
 	for _, role := range accessibleRoles {
 		if role == claims.Role {
+			CURRENT_ROLE = role
+			CURRENT_USERNAME = claims.Username
 			return nil
 		}
 	}
 
-	return status.Error(codes.PermissionDenied, "not allowed to access this feature!")
+	return status.Error(codes.PermissionDenied, "not allowed to perform this operation!")
 }

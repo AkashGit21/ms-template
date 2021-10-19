@@ -7,6 +7,8 @@ import (
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/AkashGit21/ms-project/internal/server/interceptors"
+	"github.com/AkashGit21/ms-project/lib/persistence"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
@@ -14,10 +16,11 @@ import (
 )
 
 // NewIdentityServer returns a new instance of application identity server.
-func NewIdentityServer() *identityServer {
+func NewIdentityServer(dbHandler persistence.DatabaseHandler) *identityServer {
 	return &identityServer{
-		token: server.NewTokenGenerator(),
-		keys:  map[string]int{},
+		token:     server.NewTokenGenerator(),
+		keys:      map[string]int{},
+		dbhandler: dbHandler,
 	}
 }
 
@@ -33,6 +36,7 @@ type identityServer struct {
 	keys        map[string]int
 	userEntries []userEntry
 
+	dbhandler persistence.DatabaseHandler
 	identitypb.UnimplementedIdentityServiceServer
 }
 
@@ -43,21 +47,24 @@ type ReadOnlyIdentityServer interface {
 }
 
 // Creates a user.
-func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUserRequest) (*identitypb.CreateUserResponse, error) {
+func (is *identityServer) CreateUser(_ context.Context,
+	req *identitypb.CreateUserRequest) (*identitypb.CreateUserResponse, error) {
 	log.Println("Beginning CreateUser request: ", req)
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
-	user := req.GetUser()
+	u := req.GetUser()
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
-	if _, ok := is.keys[user.GetUsername()]; ok {
-		return nil, status.Errorf(codes.AlreadyExists, "A user with username `%s` already exists!", user.GetUsername())
+	_, err := is.dbhandler.FindByUsername(u.GetUsername())
+	if err == nil {
+		return nil, status.Errorf(codes.AlreadyExists,
+			"A user with username `%s` already exists!", u.GetUsername())
 	} else {
 
 		// Validate format of Input and store the data
-		err := is.validate(user)
+		err := is.validate(u)
 		if err != nil {
 			return nil, err
 		}
@@ -65,72 +72,96 @@ func (is *identityServer) CreateUser(_ context.Context, req *identitypb.CreateUs
 		// Assign server generated info.
 		now := ptypes.TimestampNow()
 
-		pwd, err := server.HashPassword(user.GetPassword())
+		pwd, err := server.HashPassword(u.GetPassword())
 		if err != nil {
 			return nil, status.Errorf(codes.InvalidArgument, err.Error())
 		}
-		user.Password = pwd
-		user.CreateTime = now
-		user.UpdateTime = now
-		user.SessionEndTime = 0
-		user.RequestsMadeBySession = 0
 
-		// Insert.
-		index := len(is.userEntries)
-		is.userEntries = append(is.userEntries, userEntry{user: user, active: true})
-		is.keys[user.GetUsername()] = index
+		user := persistence.User{
+			Username:    u.Username,
+			Email:       u.Email,
+			Password:    pwd,
+			Role:        persistence.Role(u.Role),
+			Active:      true,
+			FirstName:   u.FirstName,
+			LastName:    u.LastName,
+			Age:         u.Age,
+			HeightInCms: u.HeightInCms,
+			CreateTime:  now,
+			UpdateTime:  now,
+			Nickname:    u.Nickname,
+		}
+
+		is.dbhandler.AddUser(user)
 	}
 	log.Println("End of CreateUser!")
 
 	return &identitypb.CreateUserResponse{
-		Username: user.GetUsername(),
+		Username: u.GetUsername(),
 	}, nil
 }
 
 // Retrieves the User with the given uri.
-func (is *identityServer) GetUser(_ context.Context, req *identitypb.GetUserRequest) (*identitypb.User, error) {
+func (is *identityServer) GetUser(_ context.Context,
+	req *identitypb.GetUserRequest) (*identitypb.User, error) {
 	log.Println("Beginning GetUser request: ", req)
 	is.mu.Lock()
 	defer is.mu.Unlock()
 
 	uname := req.GetUsername()
-	// Check if Object exists or not
-	// codes.NotFound
-	if obj, ok := is.keys[uname]; ok {
-		entry := is.userEntries[obj]
-		if entry.active {
-			log.Println("End GetUser!")
-			return entry.user, nil
-		}
+
+	// Only ADMIN or the user itself can view his/her information
+	if interceptors.CURRENT_ROLE != "ADMIN" && interceptors.CURRENT_USERNAME != uname {
+		return nil, status.Error(codes.PermissionDenied,
+			"not allowed to perform this operation!")
 	}
 
-	return nil, status.Errorf(
-		codes.NotFound, "A user with username `%s` not found!",
-		uname)
+	res, err := is.dbhandler.FindByUsername(uname)
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound, "A user with username `%s` not found!",
+			uname)
+	}
+
+	user := &identitypb.User{
+		Username:    res.Username,
+		Email:       res.Email,
+		Role:        identitypb.Role(res.Role),
+		FirstName:   res.FirstName,
+		LastName:    res.LastName,
+		CreateTime:  res.CreateTime,
+		UpdateTime:  res.UpdateTime,
+		Age:         res.Age,
+		HeightInCms: res.HeightInCms,
+		Nickname:    res.Nickname,
+		Active:      res.Active,
+	}
+	return user, nil
 }
 
 // Updates a user.
-func (is *identityServer) UpdateUser(_ context.Context, req *identitypb.UpdateUserRequest) (*identitypb.User, error) {
+func (is *identityServer) UpdateUser(_ context.Context,
+	req *identitypb.UpdateUserRequest) (*identitypb.User, error) {
 	// TODO: Add the working for UpdateUser
 	return &identitypb.User{}, nil
 }
 
 // Deletes a user, their profile, and all of their authored messages.
-func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUserRequest) (*empty.Empty, error) {
+func (is *identityServer) DeleteUser(_ context.Context,
+	req *identitypb.DeleteUserRequest) (*empty.Empty, error) {
 	log.Println("Beginning DeleteUser request: ", req)
 
-	objID := req.GetUsername()
+	uname := req.GetUsername()
+
+	if interceptors.CURRENT_ROLE != "ADMIN" && interceptors.CURRENT_USERNAME != uname {
+		return nil, status.Error(codes.PermissionDenied,
+			"not allowed to perform this operation!")
+	}
 
 	// Check if object already exists or not
 	// codes.NotFound
-	if index, ok := is.keys[objID]; ok && is.userEntries[index].active {
-
-		is.mu.Lock()
-		defer is.mu.Unlock()
-		is.userEntries[index].active = false
-	} else {
-
-		return nil, status.Errorf(codes.NotFound, "A user with username `%s` does not exist!", objID)
+	if err := is.dbhandler.RemoveByUsername(uname); err != nil {
+		return nil, status.Errorf(codes.NotFound, "A user with username `%s` does not exist!", uname)
 	}
 
 	log.Println("[DEBUG] End DeleteUser!")
@@ -138,7 +169,8 @@ func (is *identityServer) DeleteUser(_ context.Context, req *identitypb.DeleteUs
 }
 
 // Lists all users.
-func (is *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersRequest) (*identitypb.ListUsersResponse, error) {
+func (is *identityServer) ListUsers(_ context.Context,
+	in *identitypb.ListUsersRequest) (*identitypb.ListUsersResponse, error) {
 	start, err := is.token.GetIndex(in.GetPageToken())
 	if err != nil {
 		return nil, err
@@ -149,23 +181,18 @@ func (is *identityServer) ListUsers(_ context.Context, in *identitypb.ListUsersR
 	if pageSz = in.GetPageSize(); pageSz == 0 || pageSz > 12 {
 		pageSz = 12
 	}
-	offset := 0
+	// offset := 0
 
-	users := []*identitypb.User{}
-	for _, entry := range is.userEntries[start:] {
-		offset++
-		if !entry.active {
-			continue
-		}
-		users = append(users, entry.user)
-		if len(users) >= int(pageSz) {
-			break
-		}
+	numOfUsers := is.dbhandler.CountUsers()
+
+	users, err := is.dbhandler.FindAllUsers(start, pageSz)
+	if err != nil {
+		return nil, err
 	}
 
 	nextToken := ""
-	if start+offset < len(is.userEntries) {
-		nextToken = is.token.ForIndex(start + offset)
+	if start+int(pageSz) < numOfUsers {
+		nextToken = is.token.ForIndex(start + int(pageSz))
 	}
 
 	return &identitypb.ListUsersResponse{

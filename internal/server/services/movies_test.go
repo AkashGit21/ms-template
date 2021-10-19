@@ -7,11 +7,15 @@ import (
 	"testing"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
+	"github.com/AkashGit21/ms-project/lib/configuration"
+	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 	"github.com/golang/protobuf/ptypes/empty"
 )
 
 func getMovieServer() *movieServer {
-	authSrv := NewAuthServer(NewIdentityServer())
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	authSrv := NewAuthServer(NewIdentityServer(dbhandler))
 	return NewMovieServer(authSrv)
 }
 

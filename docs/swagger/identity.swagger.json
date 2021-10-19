@@ -267,6 +267,10 @@
           "$ref": "#/definitions/identityRole",
           "description": "Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest."
         },
+        "Active": {
+          "type": "boolean",
+          "title": "Status of the user - Active/Inactive"
+        },
         "firstName": {
           "type": "string",
           "title": "The first name of user. For example: 'Harry'"
@@ -292,7 +296,7 @@
           "format": "int32",
           "description": "The age of the user in years."
         },
-        "heightFeet": {
+        "heightInCms": {
           "type": "number",
           "format": "double",
           "description": "The height of the user in feet."

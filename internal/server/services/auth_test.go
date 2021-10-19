@@ -8,10 +8,15 @@ import (
 	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/AkashGit21/ms-project/lib/configuration"
+	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 )
 
 func TestLogin(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 	TestAuthSrv = NewAuthServer(TestIdentitySrv)
 	TestAuthSrv.JWT = server.NewJWTManager(SecretKey, 2*time.Minute)
 

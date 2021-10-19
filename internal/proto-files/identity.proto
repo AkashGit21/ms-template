@@ -90,6 +90,9 @@ message User {
   // Role of the user ,i.e. Guest, NORMAL, SUBSCRIBED, ADMIN. Default role is Guest.
   Role role = 5;
 
+  // Status of the user - Active/Inactive
+  bool Active = 6;
+
   // // The ending time for session currently in use
   // int32 session_end_time = 7;
 
@@ -114,7 +117,7 @@ message User {
   optional int32 age = 14;
 
   // The height of the user in feet.
-  optional double height_feet = 15;
+  optional double height_in_cms = 15;
 
   // The nickname of the user.
   optional string nickname = 16;

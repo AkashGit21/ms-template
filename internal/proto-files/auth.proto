@@ -17,6 +17,13 @@ service AuthService {
       body : "*"
     };
   }
+
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {
+      post : "/v1/auth/logout"
+      body : "*"
+    };
+  }
 }
 
 // The request message for the auth.AuthService\Login
@@ -35,4 +42,12 @@ message LoginRequest {
 // method.
 message LoginResponse { 
   string access_token = 1; 
+}
+
+message LogoutRequest {
+
+}
+
+message LogoutResponse {
+
 }
