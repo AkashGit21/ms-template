@@ -20,6 +20,8 @@ import (
 	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/AkashGit21/ms-project/internal/server/interceptors"
 	"github.com/AkashGit21/ms-project/internal/server/services"
+	"github.com/AkashGit21/ms-project/lib/configuration"
+	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 	fallback "github.com/googleapis/grpc-fallback-go/server"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"golang.org/x/sync/errgroup"
@@ -32,12 +34,15 @@ import (
 // RuntimeConfig has the run-time settings necessary to run the
 // ms-project servers.
 type RuntimeConfig struct {
-	port         int
-	httpPort     int
-	fallbackPort int
-	tlsCaCert    string
-	tlsCert      string
-	tlsKey       string
+	port                int
+	httpPort            int
+	fallbackPort        int
+	tlsCaCert           string
+	tlsCert             string
+	tlsKey              string
+	DBTypeDefault       dblayer.DBTYPE
+	DBConnectionDefault string
+	RestfulEPDefault    string
 }
 
 func accessRoles() map[string][]string {
@@ -69,7 +74,9 @@ func accessRoles() map[string][]string {
 // createBackends creates services used by both the gRPC and REST servers.
 func createBackends() *services.Backend {
 
-	identitySrv := services.NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	identitySrv := services.NewIdentityServer(dbhandler)
 	authSrv := services.NewAuthServer(identitySrv)
 	movieSrv := services.NewMovieServer(authSrv)
 
@@ -284,8 +291,8 @@ func (s *Servers) getUnaryInterceptors() grpc.ServerOption {
 	rateLimit := interceptors.NewRateLimiter()
 
 	return grpc.ChainUnaryInterceptor(
-		rateLimit.UnaryRateLimiter(rateLimit),
 		s.Backend.AuthInterceptor.Unary(),
+		rateLimit.UnaryRateLimiter(rateLimit),
 		s.Backend.ObserverRegistry.UnaryInterceptor,
 	)
 }

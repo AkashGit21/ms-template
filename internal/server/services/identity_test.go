@@ -6,11 +6,15 @@ import (
 	"testing"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	"github.com/AkashGit21/ms-project/lib/configuration"
+	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 	"github.com/golang/protobuf/ptypes/empty"
 )
 
 func TestCreateUser(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 
 	tests := []TestCase{
 		{
@@ -89,7 +93,9 @@ func TestCreateUser(t *testing.T) {
 }
 
 func TestGetUser(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 
 	userObj := &identitypb.User{
 		Username:  "test_username",
@@ -134,7 +140,9 @@ func TestGetUser(t *testing.T) {
 }
 
 func TestListUsers(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 
 	userObj1 := &identitypb.User{
 		Username:  "test_list_user1",
@@ -214,7 +222,9 @@ func TestListUsers(t *testing.T) {
 
 // TODO: Tests for UpdateUser is not written
 func TestUpdateUser(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 
 	userObj := &identitypb.User{
 		Username:  "test_list_user1",
@@ -259,7 +269,9 @@ func TestUpdateUser(t *testing.T) {
 }
 
 func TestDeleteUser(t *testing.T) {
-	TestIdentitySrv = NewIdentityServer()
+	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+
+	TestIdentitySrv = NewIdentityServer(dbhandler)
 
 	userObj := &identitypb.User{
 		Username:  "test_delete_user",

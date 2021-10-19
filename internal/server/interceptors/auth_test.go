@@ -219,7 +219,7 @@ func TestUnary_BadAuthPermissionDenied(t *testing.T) {
 
 	resp, err := testSuite.pingReqWithAuth(1, 1)
 	assert.Nil(t, resp)
-	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = not allowed to access this feature!")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = not allowed to perform this operation!")
 }
 
 func TestUnary_AuthPasses(t *testing.T) {
@@ -324,7 +324,7 @@ func TestStream_BadAuthPermissionDenied(t *testing.T) {
 	_, err = stream.Recv()
 	assert.Error(t, err, "there must be an error")
 	assert.Equal(t, codes.PermissionDenied, status.Code(err), "must error with unauthenticated")
-	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = not allowed to access this feature!")
+	assert.EqualError(t, err, "rpc error: code = PermissionDenied desc = not allowed to perform this operation!")
 }
 
 func TestStream_AuthPasses(t *testing.T) {

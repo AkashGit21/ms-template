@@ -14,7 +14,7 @@ var (
 	// Global Refresh duration (time period) for particular interval
 	RefreshDuration = 1 * time.Minute
 	// Max. number of Queries allowed during the Interval
-	QueriesPerInterval = 2
+	QueriesPerInterval = 20
 )
 
 // When the DidLimitExceed() return true, the request will be rejected.

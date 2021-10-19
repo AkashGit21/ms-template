@@ -48,6 +48,38 @@
           "AuthService"
         ]
       }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthService_Logout",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/authLogoutResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/authLogoutRequest"
+            }
+          }
+        ],
+        "tags": [
+          "AuthService"
+        ]
+      }
     }
   },
   "definitions": {
@@ -83,6 +115,12 @@
         }
       },
       "description": "The response message for the auth.AuthService\\Login\nmethod."
+    },
+    "authLogoutRequest": {
+      "type": "object"
+    },
+    "authLogoutResponse": {
+      "type": "object"
     },
     "protobufAny": {
       "type": "object",

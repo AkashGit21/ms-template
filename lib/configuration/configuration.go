@@ -3,10 +3,14 @@ package configuration
 import (
 	"encoding/json"
 	"os"
+
+	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 )
 
 var (
-	RestfulEPDefault = "localhost"
+	DBTypeDefault       = dblayer.DBTYPE("mongodb")
+	DBConnectionDefault = "mongodb://127.0.0.1"
+	RestfulEPDefault    = "localhost"
 )
 
 type ServiceConfig struct {
