@@ -38,6 +38,7 @@ func NewMongoDBLayer(connection string) (persistence.DatabaseHandler, error) {
 	if dbPassword = os.Getenv("DB_PASSWORD"); dbPassword == "" {
 		dbPassword = PASSWORD
 	}
+
 	uri, err := getConnectionURI(DATABASE, dbUsername, dbPassword, CLUSTER)
 	if err != nil {
 		fmt.Println(err)

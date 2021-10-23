@@ -10,6 +10,7 @@ import (
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
 	testingpb "github.com/AkashGit21/ms-project/internal/grpc/testing"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -177,7 +178,7 @@ func TestUnary_NoAuth(t *testing.T) {
 	}
 	testSuite.SetupSuite()
 
-	resp, err := testSuite.Client.PingEmpty(context.Background(), &emptypb.Empty{})
+	resp, err := testSuite.Client.PingEmpty(context.Background(), &empty.Empty{})
 	assert.Nil(t, resp)
 	assert.EqualError(t, err, "rpc error: code = Unauthenticated desc = authorization token is not provided!")
 }

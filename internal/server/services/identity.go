@@ -160,10 +160,14 @@ func (is *identityServer) DeleteUser(_ context.Context,
 
 	// Check if object already exists or not
 	// codes.NotFound
-	if err := is.dbhandler.RemoveByUsername(uname); err != nil {
+	if _, err := is.dbhandler.FindByUsername(uname); err != nil {
 		return nil, status.Errorf(codes.NotFound, "A user with username `%s` does not exist!", uname)
 	}
 
+	if err := is.dbhandler.RemoveByUsername(uname); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "some error while deleting user!")
+		// return nil, status.Errorf(codes.Internal, "Internal Server Error!", uname)
+	}
 	log.Println("[DEBUG] End DeleteUser!")
 	return &empty.Empty{}, nil
 }
@@ -201,6 +205,7 @@ func (is *identityServer) ListUsers(_ context.Context,
 	}, nil
 }
 
+// TODO: Add Validation for similar email in DB
 func (is *identityServer) validate(u *identitypb.User) error {
 	// Validate Required Fields.
 	if u.GetUsername() == "" {

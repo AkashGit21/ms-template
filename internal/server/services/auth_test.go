@@ -2,23 +2,26 @@ package services
 
 import (
 	"context"
+	"log"
 	"testing"
-	"time"
 
 	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
-	"github.com/AkashGit21/ms-project/internal/server"
-	"github.com/AkashGit21/ms-project/lib/configuration"
-	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
+	"google.golang.org/grpc"
 )
 
 func TestLogin(t *testing.T) {
 
-	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
+	// Mock Client for testing
+	ctx := context.Background()
+	conn, err := grpc.DialContext(ctx, "", grpc.WithInsecure(), grpc.WithContextDialer(dialer()))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
 
-	TestIdentitySrv = NewIdentityServer(dbhandler)
-	TestAuthSrv = NewAuthServer(TestIdentitySrv)
-	TestAuthSrv.JWT = server.NewJWTManager(SecretKey, 2*time.Minute)
+	identityClient := identitypb.NewIdentityServiceClient(conn)
+	authClient := authpb.NewAuthServiceClient(conn)
 
 	userObj := &identitypb.User{
 		Username:  "test_login_username",
@@ -27,7 +30,7 @@ func TestLogin(t *testing.T) {
 		Role:      identitypb.Role_NORMAL,
 		FirstName: "test_first",
 	}
-	_, err := TestIdentitySrv.CreateUser(context.Background(), &identitypb.CreateUserRequest{User: userObj})
+	_, err = identityClient.CreateUser(context.Background(), &identitypb.CreateUserRequest{User: userObj})
 	if err != nil {
 		t.Fatalf("Failed to create pre-requisite object!")
 	}
@@ -40,7 +43,7 @@ func TestLogin(t *testing.T) {
 				Password: "test_login_pwd",
 			},
 			expected:    5,
-			expectedErr: "rpc error: code = NotFound desc = incorrect username/password!",
+			expectedErr: "rpc error: code = InvalidArgument desc = incorrect username/password!",
 		},
 		{
 			name: "bad_combo",
@@ -49,7 +52,7 @@ func TestLogin(t *testing.T) {
 				Password: "test_login_password",
 			},
 			expected:    5,
-			expectedErr: "rpc error: code = NotFound desc = incorrect username/password!",
+			expectedErr: "rpc error: code = InvalidArgument desc = incorrect username/password!",
 		},
 		{
 			name: "logged_in",
@@ -64,7 +67,7 @@ func TestLogin(t *testing.T) {
 
 	for _, tcase := range tests {
 		t.Run(tcase.name, func(t *testing.T) {
-			actual, err := TestAuthSrv.Login(context.Background(), tcase.args.(*authpb.LoginRequest))
+			actual, err := authClient.Login(context.Background(), tcase.args.(*authpb.LoginRequest))
 
 			if (err == nil || (err.Error() != tcase.expectedErr)) && tcase.expectedErr != "" {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
