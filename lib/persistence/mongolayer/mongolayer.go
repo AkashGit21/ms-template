@@ -9,6 +9,7 @@ import (
 	"time"
 
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/lib/persistence"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -21,7 +22,7 @@ const (
 	DATABASE = "msZone"
 	USERNAME = "db_username"
 	PASSWORD = "db_password"
-	CLUSTER  = "cluster0.xvo2i.mongodb.net"
+	CLUSTER  = "db_cluster"
 	USERS    = "users"
 	MOVIES   = "movies"
 )
@@ -31,15 +32,22 @@ type MongoDBLayer struct {
 }
 
 func NewMongoDBLayer(connection string) (persistence.DatabaseHandler, error) {
-	var dbUsername, dbPassword string
+	var dbUsername, dbPassword, dbCluster string
 	if dbUsername = os.Getenv("DB_USERNAME"); dbUsername == "" {
 		dbUsername = USERNAME
 	}
 	if dbPassword = os.Getenv("DB_PASSWORD"); dbPassword == "" {
 		dbPassword = PASSWORD
 	}
+	if dbCluster = os.Getenv("DB_CLUSTER"); dbCluster == "" {
+		dbCluster = CLUSTER
+	}
 
-	uri, err := getConnectionURI(DATABASE, dbUsername, dbPassword, CLUSTER)
+	dbUsername = "devAkash"
+	dbPassword = "Dev$987"
+	dbCluster = "cluster0.xvo2i.mongodb.net"
+
+	uri, err := getConnectionURI(DATABASE, dbUsername, dbPassword, dbCluster)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -316,6 +324,254 @@ func (mgoLayer *MongoDBLayer) Authenticate(uname string, password string) bool {
 	}
 
 	return true
+}
+
+func (mgoLayer *MongoDBLayer) AddMovie(mv persistence.Movie) ([]byte, error) {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+	var id []byte
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			res, err := moviesCollection.InsertOne(sessCtx, mv)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+
+			id, _ = json.Marshal(res.InsertedID)
+
+			return sess.CommitTransaction(context.Background())
+		})
+
+	return id, err
+}
+
+func (mgoLayer *MongoDBLayer) FindMovieByID(id string) (persistence.Movie, error) {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+
+	var result persistence.Movie
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			filter := bson.M{"_id": id}
+			// newId := bson.ObjectIdHex(id)
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			err = moviesCollection.FindOne(
+				sessCtx,
+				filter,
+			).Decode(&result)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+
+			return sess.CommitTransaction(context.Background())
+		})
+
+	return result, err
+}
+
+func (mgoLayer *MongoDBLayer) FindAllMovies(offset int, pgSize int32) ([]*moviepb.Movie, error) {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+
+	var results []*moviepb.Movie
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			filter := bson.M{}
+			opts := options.Find().SetSort(bson.M{}).SetSkip(int64(offset)).SetLimit(int64(pgSize))
+
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			cur, err := moviesCollection.Find(sessCtx, filter, opts)
+			// defer cur.Close(ctx)
+
+			if err = cur.All(sessCtx, &results); err != nil {
+				log.Println(err)
+				return err
+			}
+			return sess.CommitTransaction(context.Background())
+		})
+
+	// fmt.Println("ID0:", results[0].Username)
+	return results, err
+}
+
+func (mgoLayer *MongoDBLayer) UpdateMovieByID(id string, mv persistence.Movie) ([]byte, error) {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+
+	var result persistence.Movie
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			filter := bson.M{"_id": id}
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			err := moviesCollection.FindOneAndUpdate(
+				sessCtx,
+				filter,
+				mv).Decode(&result)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			// InsertOne(sessCtx, mv)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+
+			return sess.CommitTransaction(context.Background())
+		})
+
+	return []byte(result.Id), err
+}
+
+func (mgoLayer *MongoDBLayer) CountMovieRecords() int {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+
+	var count int64
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			filter := bson.M{}
+
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			count, err = moviesCollection.CountDocuments(sessCtx, filter)
+			// defer cur.Close(ctx)
+
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+			return sess.CommitTransaction(context.Background())
+		})
+
+	// fmt.Println("ID0:", results[0].Username)
+	return int(count)
+}
+
+func (mgoLayer *MongoDBLayer) RemoveMovieByID(id string) error {
+	cli := mgoLayer.client
+
+	opts := options.Session().SetDefaultReadConcern(readconcern.Majority())
+
+	sess, err := cli.StartSession(opts)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sess.EndSession(context.TODO())
+	// var count []byte
+
+	// Call WithSession to start a transaction within the new session.
+	err = mongo.WithSession(
+		context.TODO(),
+		sess,
+		func(sessCtx mongo.SessionContext) error {
+			// Use sessCtx as the Context parameter for InsertOne and FindOne so
+			// both operations are run under the new Session.
+
+			if err := sess.StartTransaction(); err != nil {
+				return err
+			}
+
+			newId := bson.M{"_id": id}
+			// newId := bson.ObjectIdHex(id)
+			moviesCollection := cli.Database(DATABASE).Collection(MOVIES)
+			_, err := moviesCollection.DeleteOne(sessCtx, newId)
+			if err != nil {
+				log.Println(err)
+				return err
+			}
+
+			// count, _ = json.Marshal(res.DeletedCount)
+
+			return sess.CommitTransaction(context.Background())
+		})
+
+	return nil
 }
 
 func getNewClient(connection string) (*mongo.Client, error) {

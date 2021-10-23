@@ -18,23 +18,23 @@ import (
 // NewIdentityServer returns a new instance of application identity server.
 func NewIdentityServer(dbHandler persistence.DatabaseHandler) *identityServer {
 	return &identityServer{
-		token:     server.NewTokenGenerator(),
-		keys:      map[string]int{},
+		token: server.NewTokenGenerator(),
+		// keys:      map[string]int{},
 		dbhandler: dbHandler,
 	}
 }
 
-type userEntry struct {
-	user   *identitypb.User
-	active bool
-}
+// type userEntry struct {
+// 	user   *identitypb.User
+// 	active bool
+// }
 
 type identityServer struct {
 	token server.TokenGenerator
 
-	mu          sync.Mutex
-	keys        map[string]int
-	userEntries []userEntry
+	mu sync.Mutex
+	// keys        map[string]int
+	// userEntries []userEntry
 
 	dbhandler persistence.DatabaseHandler
 	identitypb.UnimplementedIdentityServiceServer
@@ -117,7 +117,7 @@ func (is *identityServer) GetUser(_ context.Context,
 	}
 
 	res, err := is.dbhandler.FindByUsername(uname)
-	if err != nil {
+	if err != nil || !res.Active {
 		return nil, status.Errorf(
 			codes.NotFound, "A user with username `%s` not found!",
 			uname)
@@ -166,7 +166,6 @@ func (is *identityServer) DeleteUser(_ context.Context,
 
 	if err := is.dbhandler.RemoveByUsername(uname); err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "some error while deleting user!")
-		// return nil, status.Errorf(codes.Internal, "Internal Server Error!", uname)
 	}
 	log.Println("[DEBUG] End DeleteUser!")
 	return &empty.Empty{}, nil
@@ -219,17 +218,17 @@ func (is *identityServer) validate(u *identitypb.User) error {
 			"The field `email` is required.")
 	}
 	// Validate Unique Fields.
-	for _, x := range is.userEntries {
-		if !x.active {
-			continue
-		}
-		if (u.GetEmail() == x.user.GetEmail()) &&
-			(u.GetUsername() != x.user.GetUsername()) {
-			return status.Errorf(
-				codes.AlreadyExists,
-				"A user with email `%s` already exists.",
-				u.GetEmail())
-		}
-	}
+	// for _, x := range is.userEntries {
+	// 	if !x.active {
+	// 		continue
+	// 	}
+	// 	if (u.GetEmail() == x.user.GetEmail()) &&
+	// 		(u.GetUsername() != x.user.GetUsername()) {
+	// 		return status.Errorf(
+	// 			codes.AlreadyExists,
+	// 			"A user with email `%s` already exists.",
+	// 			u.GetEmail())
+	// 	}
+	// }
 	return nil
 }

@@ -4,6 +4,7 @@ syntax = "proto3";
 package movie;
 option go_package = "internal/grpc/movie; moviepb";
 
+import "google/protobuf/timestamp.proto";
 import "pkg/google/api/field_behavior.proto";
 import "pkg/google/api/annotations.proto";
 import "google/protobuf/empty.proto";
@@ -187,4 +188,15 @@ message Movie {
 
   // The author(s) of film 
   repeated string writers = 8;
+
+  // Status of the user - Active/Inactive
+  bool Active = 11;
+
+  // Output only. The timestamp at which the user was created.
+  google.protobuf.Timestamp create_time = 12
+      [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The latest timestamp at which the user was updated.
+  google.protobuf.Timestamp update_time = 13
+      [(google.api.field_behavior) = OUTPUT_ONLY];
 }

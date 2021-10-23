@@ -4,45 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"reflect"
 	"testing"
-	"time"
 
-	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
-	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/AkashGit21/ms-project/internal/server/interceptors"
-	"github.com/AkashGit21/ms-project/lib/configuration"
-	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/test/bufconn"
 )
-
-func dialer() func(context.Context, string) (net.Conn, error) {
-	listener := bufconn.Listen(1024 * 1024)
-
-	grpcServer := grpc.NewServer()
-	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
-
-	TestIdentitySrv = NewIdentityServer(dbhandler)
-	TestAuthSrv = NewAuthServer(TestIdentitySrv)
-	TestAuthSrv.JWT = server.NewJWTManager(SecretKey, 2*time.Minute)
-
-	identitypb.RegisterIdentityServiceServer(grpcServer, TestIdentitySrv)
-	authpb.RegisterAuthServiceServer(grpcServer, TestAuthSrv)
-
-	go func() {
-		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatal(err)
-		}
-	}()
-
-	return func(context.Context, string) (net.Conn, error) {
-		return listener.Dial()
-	}
-}
 
 func TestCreateUser(t *testing.T) {
 
@@ -291,9 +260,9 @@ func TestListUsers(t *testing.T) {
 			}
 			if (tcase.expected != nil || (actual != nil)) &&
 				!reflect.DeepEqual(
-					len(actual.Users), tcase.expected.(int),
+					len(actual.GetUsers()), tcase.expected.(int),
 				) {
-				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected.(int), len(actual.Users))
+				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected.(int), len(actual.GetUsers()))
 			}
 
 		})

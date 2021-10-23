@@ -337,6 +337,22 @@
             "type": "string"
           },
           "title": "The author(s) of film"
+        },
+        "Active": {
+          "type": "boolean",
+          "title": "Status of the user - Active/Inactive"
+        },
+        "createTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The timestamp at which the user was created.",
+          "readOnly": true
+        },
+        "updateTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Output only. The latest timestamp at which the user was updated.",
+          "readOnly": true
         }
       },
       "title": "The movie",
