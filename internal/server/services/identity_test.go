@@ -7,8 +7,11 @@ import (
 	"net"
 	"reflect"
 	"testing"
+	"time"
 
+	authpb "github.com/AkashGit21/ms-project/internal/grpc/auth"
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	"github.com/AkashGit21/ms-project/internal/server"
 	"github.com/AkashGit21/ms-project/internal/server/interceptors"
 	"github.com/AkashGit21/ms-project/lib/configuration"
 	"github.com/AkashGit21/ms-project/lib/persistence/dblayer"
@@ -20,14 +23,18 @@ import (
 func dialer() func(context.Context, string) (net.Conn, error) {
 	listener := bufconn.Listen(1024 * 1024)
 
-	server := grpc.NewServer()
+	grpcServer := grpc.NewServer()
 	dbhandler, _ := dblayer.NewPersistenceLayer(configuration.DBTypeDefault, configuration.DBConnectionDefault)
 
 	TestIdentitySrv = NewIdentityServer(dbhandler)
-	identitypb.RegisterIdentityServiceServer(server, TestIdentitySrv)
+	TestAuthSrv = NewAuthServer(TestIdentitySrv)
+	TestAuthSrv.JWT = server.NewJWTManager(SecretKey, 2*time.Minute)
+
+	identitypb.RegisterIdentityServiceServer(grpcServer, TestIdentitySrv)
+	authpb.RegisterAuthServiceServer(grpcServer, TestAuthSrv)
 
 	go func() {
-		if err := server.Serve(listener); err != nil {
+		if err := grpcServer.Serve(listener); err != nil {
 			log.Fatal(err)
 		}
 	}()
