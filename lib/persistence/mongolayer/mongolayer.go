@@ -43,10 +43,6 @@ func NewMongoDBLayer(connection string) (persistence.DatabaseHandler, error) {
 		dbCluster = CLUSTER
 	}
 
-	dbUsername = "devAkash"
-	dbPassword = "Dev$987"
-	dbCluster = "cluster0.xvo2i.mongodb.net"
-
 	uri, err := getConnectionURI(DATABASE, dbUsername, dbPassword, dbCluster)
 	if err != nil {
 		fmt.Println(err)
