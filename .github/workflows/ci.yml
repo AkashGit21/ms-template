@@ -21,7 +21,7 @@ jobs:
         go-version: 1.17
 
     - name: Build
-      run: go build -installsuffix cgo -ldflags="-w -s" -o /go/bin/ms-server ./cmd/ms-project
+      run: go build -installsuffix cgo -ldflags="-w -s" -o ms-server ./cmd/ms-project
       
   tests:
     runs-on: ubuntu-latest
@@ -37,7 +37,7 @@ jobs:
         DB_PASSOWRD: ${{ secrets.MONGODB_PASSWORD }} 
         DB_CLUSTER: ${{ secrets.MONGODB_CLUSTER }} 
         
-      run: go test -v -race --shuffle=on ./...
+      run: go test -v --shuffle=on ./...
       
     - name: Run server coverage
       run: go test ./server/... -coverprofile=coverage.txt -covermode=atomic
