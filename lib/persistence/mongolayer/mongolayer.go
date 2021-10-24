@@ -48,6 +48,7 @@ func NewMongoDBLayer(connection string) (persistence.DatabaseHandler, error) {
 		fmt.Println(err)
 		return nil, err
 	}
+	fmt.Println("MONGODB URL:", uri)
 	c, err := getNewClient(uri)
 	if err != nil {
 		log.Fatal(err)
