@@ -578,6 +578,8 @@ func getConnectionURI(db string, user string, pwd string, cluster string) (strin
 	if db == "" || user == "" || pwd == "" || cluster == "" {
 		return "", fmt.Errorf("Missing Parameters. Please retry!")
 	}
+
+	fmt.Println("DB: ", db)
 	fmt.Println("User: ", user)
 	fmt.Println("Password: ", pwd)
 	fmt.Println("Cluster: ", cluster)
