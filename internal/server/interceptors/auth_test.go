@@ -174,7 +174,7 @@ func TestUnary_NoAuth(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8081",
+		serverAddr: "127.0.0.1:8091",
 	}
 	testSuite.SetupSuite()
 
@@ -194,7 +194,7 @@ func TestUnary_BadAuth(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8082",
+		serverAddr: "127.0.0.1:8092",
 	}
 	testSuite.SetupSuite()
 
@@ -214,7 +214,7 @@ func TestUnary_BadAuthPermissionDenied(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8083",
+		serverAddr: "127.0.0.1:8093",
 	}
 	testSuite.SetupSuite()
 
@@ -234,7 +234,7 @@ func TestUnary_AuthPasses(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8084",
+		serverAddr: "127.0.0.1:8094",
 	}
 	testSuite.SetupSuite()
 
@@ -255,7 +255,7 @@ func TestStream_NoAuth(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8085",
+		serverAddr: "127.0.0.1:8095",
 	}
 	testSuite.SetupSuite()
 
@@ -282,7 +282,7 @@ func TestStream_BadAuth(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8086",
+		serverAddr: "127.0.0.1:8096",
 	}
 	testSuite.SetupSuite()
 
@@ -311,7 +311,7 @@ func TestStream_BadAuthPermissionDenied(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8087",
+		serverAddr: "127.0.0.1:8097",
 	}
 	testSuite.SetupSuite()
 
@@ -340,7 +340,7 @@ func TestStream_AuthPasses(t *testing.T) {
 	testSuite := TestInterceptorSuite{
 		T:          t,
 		ServerOpts: opts,
-		serverAddr: "127.0.0.1:8088",
+		serverAddr: "127.0.0.1:8098",
 	}
 	testSuite.SetupSuite()
 
