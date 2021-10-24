@@ -564,7 +564,6 @@ func (mgoLayer *MongoDBLayer) RemoveMovieByID(id string) error {
 			}
 
 			// count, _ = json.Marshal(res.DeletedCount)
-
 			return sess.CommitTransaction(context.Background())
 		})
 
@@ -579,5 +578,9 @@ func getConnectionURI(db string, user string, pwd string, cluster string) (strin
 	if db == "" || user == "" || pwd == "" || cluster == "" {
 		return "", fmt.Errorf("Missing Parameters. Please retry!")
 	}
+	fmt.Println("User: ", user)
+	fmt.Println("Password: ", pwd)
+	fmt.Println("Cluster: ", cluster)
+
 	return fmt.Sprintf(`mongodb+srv://%s:%s@%s/%s?retryWrites=true&w=majority`, user, pwd, cluster, db), nil
 }
