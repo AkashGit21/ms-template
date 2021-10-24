@@ -328,7 +328,7 @@ func TestDeleteUser(t *testing.T) {
 
 	client := identitypb.NewIdentityServiceClient(conn)
 
-	// User ccreation for deletion test
+	// User creation for deletion test
 	userObj := &identitypb.User{
 		Username:  "test_delete_username",
 		Email:     "test_delete_email@domain.in",

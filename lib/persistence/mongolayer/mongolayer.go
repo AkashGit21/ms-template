@@ -579,5 +579,5 @@ func getConnectionURI(db string, user string, pwd string, cluster string) (strin
 	if db == "" || user == "" || pwd == "" || cluster == "" {
 		return "", fmt.Errorf("Missing Parameters. Please retry!")
 	}
-	return fmt.Sprintf("mongodb+srv://%s:%s@%s/%s?retryWrites=true&w=majority", user, pwd, cluster, db), nil
+	return fmt.Sprintf(`mongodb+srv://%s:%s@%s/%s?retryWrites=true&w=majority`, user, pwd, cluster, db), nil
 }
