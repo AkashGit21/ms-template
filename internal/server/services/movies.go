@@ -3,11 +3,14 @@ package services
 import (
 	"context"
 	"fmt"
+	"log"
 	"reflect"
 	"sync"
 
 	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 	"github.com/AkashGit21/ms-project/internal/server"
+	"github.com/AkashGit21/ms-project/lib/persistence"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -17,9 +20,10 @@ type movieServer struct {
 	token   server.TokenGenerator
 	authSrv *authServer
 
-	mu    sync.Mutex
-	keys  map[string]int
-	Store []movieEntry
+	mu        sync.Mutex
+	dbhandler persistence.DatabaseHandler
+	keys      map[string]int
+	Store     []movieEntry
 
 	moviepb.UnimplementedMovieServiceServer
 }
@@ -31,13 +35,15 @@ type movieEntry struct {
 
 func NewMovieServer(as *authServer) *movieServer {
 	return &movieServer{
-		token:   server.NewTokenGenerator(),
-		authSrv: as,
-		keys:    map[string]int{},
+		token:     server.NewTokenGenerator(),
+		authSrv:   as,
+		keys:      map[string]int{},
+		dbhandler: as.dbhandler,
 	}
 }
 
-func (ms *movieServer) ListMovies(ctx context.Context, req *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
+func (ms *movieServer) ListMovies(ctx context.Context,
+	req *moviepb.ListMoviesRequest) (*moviepb.ListMoviesResponse, error) {
 
 	start, err := ms.token.GetIndex(req.GetPageToken())
 	if err != nil {
@@ -49,93 +55,131 @@ func (ms *movieServer) ListMovies(ctx context.Context, req *moviepb.ListMoviesRe
 	if pageSz = req.GetPageSize(); pageSz == 0 || pageSz > 12 {
 		pageSz = 12
 	}
-	offset := 0
 
-	out := []*moviepb.Movie{}
+	numOfRecords := ms.dbhandler.CountMovieRecords()
 
-	for _, entry := range ms.Store[start:] {
-		offset++
-		if !entry.active {
-			continue
-		}
-		out = append(out, entry.movie)
-		if len(out) >= int(pageSz) {
-			break
-		}
+	movies, err := ms.dbhandler.FindAllMovies(start, pageSz)
+	if err != nil {
+		return nil, err
 	}
 
 	nextToken := ""
-	if start+offset < len(ms.Store) {
-		nextToken = ms.token.ForIndex(start + offset)
+	if start+int(pageSz) < numOfRecords {
+		nextToken = ms.token.ForIndex(start + int(pageSz))
 	}
 
 	return &moviepb.ListMoviesResponse{
-		Movies:        out,
+		Movies:        movies,
 		NextPageToken: nextToken,
 	}, nil
 }
 
-func (ms *movieServer) GetMovie(ctx context.Context, req *moviepb.GetMovieRequest) (*moviepb.Movie, error) {
+func (ms *movieServer) GetMovie(ctx context.Context,
+	req *moviepb.GetMovieRequest) (*moviepb.Movie, error) {
+	log.Println("[DEBUG] Beginning GetMovieRequest: ", req)
 
-	// log.Println("[DEBUG] Beginning GetMovieRequest: ", req)
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 
 	objID := req.GetId()
 
 	// Check if Object exists or not
 	// codes.NotFound
-	if obj, ok := ms.keys[objID]; ok && ms.Store[obj].active {
-		// Found the required Object, hence return it
+	res, err := ms.dbhandler.FindMovieByID(objID)
+	if err != nil || !res.Active {
 
-		return ms.Store[obj].movie, nil
-	} else {
-		return nil, status.Errorf(codes.NotFound, "Record with ID:%v does not exist!", objID)
+		return nil, status.Errorf(
+			codes.NotFound, "Movie Record with ID:%v does not exist!",
+			objID)
 	}
+
+	mv := &moviepb.Movie{
+		Id:      res.Id,
+		Name:    res.Name,
+		Summary: res.Summary,
+		Cast:    res.Cast,
+		// TODO: Add the Tags here
+		// Tags: res.Tags,
+		Director:   res.Director,
+		Writers:    res.Writers,
+		Active:     res.Active,
+		CreateTime: res.CreateTime,
+		UpdateTime: res.UpdateTime,
+	}
+
+	return mv, nil
 }
 
-func (ms *movieServer) CreateMovie(ctx context.Context, req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
+func (ms *movieServer) CreateMovie(ctx context.Context,
+	req *moviepb.CreateMovieRequest) (*moviepb.CreateMovieResponse, error) {
+	log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
 
-	// log.Println("[DEBUG] Beginning CreateMovieRequest: ", req)
-
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 	objID := server.GenerateUUID()
 
 	// Check if Object already exists -
 	// codes.AlreadyExists
-	if _, ok := ms.keys[objID]; ok {
-		return nil, status.Errorf(codes.AlreadyExists, "Movie Record with ID: %v already exists!", objID)
+	_, err := ms.dbhandler.FindMovieByID(objID)
+	if err == nil {
+		return nil, status.Errorf(codes.AlreadyExists,
+			"Movie Record with ID: %v already exists!", objID)
 	} else {
 		mvObject := req.GetMovie()
 		if mvObject.GetId() != "" {
-			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! ID is auto-generated...")
+			return nil, status.Errorf(codes.InvalidArgument,
+				"Input is not valid! ID is auto-generated...")
 		}
 		mvObject.Id = objID
 
 		// Validate format of Input and store the data
 		if valid, err := ms.isValidMovie(mvObject); !valid {
-			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
+			return nil, status.Errorf(codes.InvalidArgument,
+				"Input is not valid! %v", err.Error())
 		}
 
-		ms.mu.Lock()
-		defer ms.mu.Unlock()
-		index := len(ms.Store)
-		ms.keys[objID] = index
-		ms.Store = append(ms.Store, movieEntry{movie: mvObject, active: true})
+		// Assign server generated info.
+		now := ptypes.TimestampNow()
+
+		movieObject := persistence.Movie{
+			Id:      objID,
+			Name:    mvObject.Name,
+			Summary: mvObject.Summary,
+			Cast:    mvObject.Cast,
+			// TODO: Add Tags here
+			Director:   mvObject.Director,
+			Writers:    mvObject.Writers,
+			Active:     true,
+			CreateTime: now,
+			UpdateTime: now,
+		}
+
+		ms.dbhandler.AddMovie(movieObject)
 	}
 
-	// log.Println("[DEBUG] End CreateMovieRequest!")
+	log.Println("[DEBUG] End CreateMovieRequest!")
 	return &moviepb.CreateMovieResponse{
 		Id: objID,
 	}, nil
 }
 
-func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
+func (ms *movieServer) UpdateMovie(ctx context.Context,
+	req *moviepb.UpdateMovieRequest) (*moviepb.UpdateMovieResponse, error) {
 
 	// log.Println("[DEBUG] Beginning UpdateMovieRequest: ", req)
 
 	objID := req.GetId()
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
 
 	// Check if object already exists or not
 	// codes.NotFound
-	if index, ok := ms.keys[objID]; ok && ms.Store[index].active {
+
+	_, err := ms.dbhandler.FindMovieByID(objID)
+	if err != nil {
+		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
+	} else {
+
 		// Validate and update the whole object
 		mvObject := req.GetMovie()
 
@@ -151,14 +195,19 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 			return nil, status.Errorf(codes.InvalidArgument, "Input is not valid! %v", err.Error())
 		}
 
-		mvObject.Id = objID
-		ms.Store[ms.keys[objID]] = movieEntry{movie: mvObject, active: true}
-
-	} else {
-		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
+		updatedMv := persistence.Movie{
+			Name:    mvObject.Name,
+			Summary: mvObject.Summary,
+			Cast:    mvObject.Cast,
+			// Tags: mvObject.Tags,
+			Director:   mvObject.Director,
+			Writers:    mvObject.Writers,
+			UpdateTime: ptypes.TimestampNow(),
+		}
+		ms.dbhandler.UpdateMovieByID(objID, updatedMv)
 	}
 
-	// log.Println("[DEBUG] End UpdateMovieRequest!")
+	log.Println("[DEBUG] End UpdateMovieRequest!")
 	return &moviepb.UpdateMovieResponse{
 		Id: objID,
 	}, nil
@@ -215,25 +264,25 @@ func (ms *movieServer) UpdateMovie(ctx context.Context, req *moviepb.UpdateMovie
 // 	}, nil
 // }
 
-func (ms *movieServer) DeleteMovie(ctx context.Context, req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
-
-	// log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
+func (ms *movieServer) DeleteMovie(ctx context.Context,
+	req *moviepb.DeleteMovieRequest) (*empty.Empty, error) {
+	log.Println("[DEBUG] Beginning DeleteMovieRequest: ", req)
 
 	objID := req.GetId()
 
 	// Check if object already exists or not
 	// codes.NotFound
-	if index, ok := ms.keys[objID]; ok && ms.Store[index].active {
-		ms.mu.Lock()
-		defer ms.mu.Unlock()
-
-		ms.Store[index].active = false
-
-	} else {
-		return nil, status.Errorf(codes.NotFound, "Movie Record with ID:%v does not exist!", objID)
+	if _, err := ms.dbhandler.FindMovieByID(objID); err != nil {
+		return nil, status.Errorf(
+			codes.NotFound, "Movie Record with ID:%v does not exist!",
+			objID)
 	}
 
-	// log.Println("[DEBUG] End DeleteMovieRequest!")
+	if err := ms.dbhandler.RemoveMovieByID(objID); err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "some error while deleting movie!")
+	}
+
+	log.Println("[DEBUG] End DeleteMovieRequest!")
 	return &empty.Empty{}, nil
 }
 

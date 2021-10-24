@@ -2,6 +2,7 @@ package persistence
 
 import (
 	identitypb "github.com/AkashGit21/ms-project/internal/grpc/identity"
+	moviepb "github.com/AkashGit21/ms-project/internal/grpc/movie"
 )
 
 type DatabaseHandler interface {
@@ -12,6 +13,13 @@ type DatabaseHandler interface {
 	CountUsers() int
 
 	Authenticate(string, string) bool
+
+	AddMovie(Movie) ([]byte, error)
+	FindMovieByID(string) (Movie, error)
+	FindAllMovies(int, int32) ([]*moviepb.Movie, error)
+	UpdateMovieByID(string, Movie) ([]byte, error)
+	RemoveMovieByID(string) error
+	CountMovieRecords() int
 
 	// AddEvent(Event) ([]byte, error)
 	// AddBookingForUser([]byte, Booking) error

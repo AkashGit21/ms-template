@@ -34,13 +34,13 @@ docker-build:
 .PHONY: docker-run
 docker-run:
 	echo -e "\n\nRunning the container..."
-	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp --name ms-server ms-template
+	docker run -d --rm -p 8081:8081/tcp -p 8082:8082/udp --name $(BINARY_NAME) ms-template
 	echo -e "\n\nContainer is running successfully in the background! "
 
 .PHONY: docker-stop
 docker-stop:
 	echo -e "\n\nStopping the docker container..."
-	docker stop ms-server
+	docker stop $(BINARY_NAME)
 
 .PHONY: gen
 gen:
@@ -59,4 +59,4 @@ run:
 .PHONY: test
 test:
 	echo -e "\n\n Testing..."
-	go test -v -cover --shuffle=on ./...
+	$(GOTEST) -v -race -cover --shuffle=on ./...
