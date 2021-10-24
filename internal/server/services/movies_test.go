@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"reflect"
 	"strconv"
@@ -397,11 +396,7 @@ func TestDeleteMovie(t *testing.T) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expectedErr, err)
 			}
 
-			fmt.Println("Actual:", actual, " Type:", reflect.TypeOf(actual))
-			fmt.Println("Expected:", tcase.expected, " Type:", reflect.TypeOf(tcase.expected))
-
-			if (tcase.expected != nil || (actual != nil)) &&
-				!reflect.DeepEqual(actual, tcase.expected) {
+			if (tcase.expected != nil || (actual != nil)) && reflect.TypeOf(actual) != reflect.TypeOf(tcase.expected) {
 				t.Errorf("\n\texpected: %v \n\tactual: %v", tcase.expected, actual)
 			}
 		})
