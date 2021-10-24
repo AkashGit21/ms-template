@@ -33,9 +33,9 @@ jobs:
         
     - name: Run unit tests
       env: 
-        DB_USERNAME: ${{ secrets.MONGODB_USERNAME }}
-        DB_PASSOWRD: ${{ secrets.MONGODB_PASSWORD }} 
-        DB_CLUSTER: ${{ secrets.MONGODB_CLUSTER }} 
+        DB_USERNAME: '${{ secrets.MONGODB_USERNAME }}'
+        DB_PASSOWRD: '${{ secrets.MONGODB_PASSWORD }}'
+        DB_CLUSTER: '${{ secrets.MONGODB_CLUSTER }}' 
         
       run: go test -v --shuffle=on ./...
       
