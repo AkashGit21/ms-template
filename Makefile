@@ -5,8 +5,10 @@ GOTEST=$(GOCMD) test
 GOCLEAN=$(GOCMD) clean
 GOBUILD=$(GOCMD) build
 GOINSTALL=$(GOCMD) install
+GORUN=$(GOCMD) run
 
 BINARY_NAME=ms-server
+MAIN_DIR=./cmd/ms-project
 TAGS=coprocess grpc goplugin
 
 TEST_REGEX=.
@@ -18,7 +20,7 @@ BENCH_RUN=NONE
 
 .PHONY: build
 build:
-	$(GOBUILD) -tags "$(TAGS)" -o $(BINARY_NAME) -v ./cmd/ms-project
+	$(GOBUILD) -tags "$(TAGS)" -o $(BINARY_NAME) -v $(MAIN_DIR)
 
 .PHONY: clean
 clean:
@@ -50,11 +52,11 @@ gen:
 
 .PHONY: help
 help:
-	go run ./cmd/ms-project help
+	$(GORUN) $(MAIN_DIR) help
 
 .PHONY: run
 run:
-	go run ./cmd/ms-project run
+	$(GORUN) $(MAIN_DIR) run
 
 .PHONY: test
 test:
